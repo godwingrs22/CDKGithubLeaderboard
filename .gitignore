@@ -2,7 +2,39 @@
 !jest.config.js
 *.d.ts
 node_modules
+# Dependencies
+node_modules/
 
 # CDK asset staging directory
+# Environment variables
+.env
+
+# Output folders
+output/
+output*/
+dist/
 .cdk.staging
 cdk.out
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.js
+!jest.config.js
+*.d.ts
+*.tsbuildinfo
+
+# CSV files
+*.csv
