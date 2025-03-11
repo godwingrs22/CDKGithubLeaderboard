@@ -111,30 +111,53 @@ def is_active_contributor(contributor: Contributor) -> bool:
 
 def process_contributions(org: str, repo: str) -> Dict[str, Contributor]:
     """
-    Process contributions for all contributors, excluding specific authors
+    Process contributions for all contributors
+    
+    Args:
+        org: GitHub organization/owner name
+        repo: Repository name
+        
+    Returns:
+        Dictionary of active contributors and their data
     """
     active_contributors: Dict[str, Contributor] = {}
     
     print(f"Fetching contributors for {org}/{repo}")
-    potential_contributors = fetch_all_contributors(github_api, org, repo)
-    print(f"Found {len(potential_contributors)} total potential contributors")
+    github_api = GithubAPI(GITHUB_TOKEN)
     
-    for i, username in enumerate(potential_contributors, 1):
-        if is_author_to_exclude(username):
-            print(f"Skipped {username} (excluded author)")
-            continue
-            
-        print(f"Processing contributor {i}/{len(potential_contributors)}: {username}")
-        contributor = fetch_contributions_data(github_api, org, repo, username)
+    # Get PR and review data
+    pr_data = github_api.get_contributor_reviews(org, repo)
+    
+    # Get issues data
+    issues_data = github_api.get_contributor_reviews(org, repo)
+    
+    # Combine all contributors
+    all_contributors = set(pr_data.keys()) | set(issues_data.keys())
+    
+    print(f"Found {len(all_contributors)} total potential contributors")
+    
+    for username in all_contributors:
+        pr_stats = pr_data.get(username, {'prsMerged': 0, 'prsReviewed': 0})
+        issue_stats = issues_data.get(username, {'issuesCreated': 0})
         
-        if contributor['prsMerged'] > 0 or contributor['prsReviewed'] > 0:
+        contributor: Contributor = {
+            'username': username,
+            'prsMerged': pr_stats.get('prsMerged', 0),
+            'prsReviewed': pr_stats.get('prsReviewed', 0),
+            'issuesCreated': issue_stats.get('issuesCreated', 0),
+            'totalScore': 0
+        }
+        
+        if is_active_contributor(contributor):
+            contributor['totalScore'] = calculate_score(contributor)
             active_contributors[username] = contributor
-            print(f"Added {username} with {contributor['prsMerged']} PRs merged and {contributor['prsReviewed']} PRs reviewed")
+            print(f"Added {username} with {contributor['prsMerged']} PRs merged, "
+                  f"{contributor['prsReviewed']} PRs reviewed, and "
+                  f"{contributor['issuesCreated']} issues created")
     
-    print(f"\nSummary:")
-    print(f"Total potential contributors: {len(potential_contributors)}")
-    print(f"Active contributors: {len(active_contributors)}")
+    print(f"\nFound {len(active_contributors)} active contributors")
     return active_contributors
+
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
