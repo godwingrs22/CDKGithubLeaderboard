@@ -64,50 +64,47 @@ def calculate_score(contributor: Contributor) -> int:
     return contributor['prsMerged'] * 10 + contributor['prsReviewed'] * 8
 
 def fetch_contributions_data(org: str, repo: str, cursor: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Fetch contributions data from GitHub GraphQL API
-    """
+    search_query = f"repo:{org}/{repo} is:pr is:merged merged:>=2024-01-01"
+    
     query = """
-        query($org: String!, $repo: String!, $cursor: String) {
-          repository(owner: $org, name: $repo) {
-            pullRequests(
-              first: 50, 
-              after: $cursor, 
-              states: [MERGED],
-              orderBy: {field: UPDATED_AT, direction: DESC}
-            ) {
-              nodes {
+        query($queryString: String!, $cursor: String) {
+          search(
+            query: $queryString
+            type: ISSUE
+            first: 100
+            after: $cursor
+          ) {
+            nodes {
+              ... on PullRequest {
+                number
                 author {
                   login
                 }
                 mergedAt
-                updatedAt
-                reviews(first: 50) {
+                title
+                reviews(first: 100) {
                   nodes {
                     author {
                       login
                     }
-                    updatedAt
+                    createdAt
+                    state
                   }
                 }
               }
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
             }
           }
         }
     """
     
-    return github_graphql(
-        query, 
-        {
-            'org': org,
-            'repo': repo,
-            'cursor': cursor
-        }
-    )
+    return github_graphql(query, {
+        'queryString': search_query,
+        'cursor': cursor
+    })
 
 def process_contributions(org: str, repo: str) -> Dict[str, Contributor]:
     """
@@ -116,36 +113,36 @@ def process_contributions(org: str, repo: str) -> Dict[str, Contributor]:
     contributors: Dict[str, Contributor] = {}
     has_next_page = True
     cursor = None
-    start_date = datetime.datetime.fromisoformat("2024-01-01T00:00:00+00:00")
     
     print(f"Fetching contributions data for {org}/{repo}")
     
+    # Track PRs for debugging
+    pr_details = {}
+    
     while has_next_page:
         response = fetch_contributions_data(org, repo, cursor)
-        repository = response.get('data', {}).get('repository', {})
+        search_results = response.get('data', {}).get('search')
         
-        if not repository or 'pullRequests' not in repository:
+        if not search_results:
             print(f"Error fetching data. Response: {json.dumps(response)}")
             break
             
-        pull_requests = repository['pullRequests']
-        
         # Process pull requests
-        for pr in pull_requests.get('nodes', []):
-            if not pr or not pr.get('author') or not pr.get('mergedAt'):
+        for pr in search_results.get('nodes', []):
+            if not pr or not pr.get('author'):
                 continue
-                
-            merged_at = datetime.datetime.fromisoformat(
-                pr['mergedAt'].replace('Z', '+00:00')
-            )
-            
-            # Skip if PR was merged before 2024
-            if merged_at < start_date:
-                has_next_page = False
-                break
                 
             author = pr['author']
             username = author['login']
+            
+            # Debug logging
+            if username not in pr_details:
+                pr_details[username] = []
+            pr_details[username].append({
+                'number': pr['number'],
+                'title': pr['title'],
+                'mergedAt': pr['mergedAt']
+            })
             
             if username not in contributors:
                 contributors[username] = {
@@ -159,15 +156,7 @@ def process_contributions(org: str, repo: str) -> Dict[str, Contributor]:
             
             # Process reviews
             for review in pr.get('reviews', {}).get('nodes', []):
-                if not review or not review.get('author') or not review.get('updatedAt'):
-                    continue
-                
-                review_date = datetime.datetime.fromisoformat(
-                    review['updatedAt'].replace('Z', '+00:00')
-                )
-                
-                # Skip reviews from before 2024
-                if review_date < start_date:
+                if not review or not review.get('author'):
                     continue
                 
                 reviewer = review['author']
@@ -184,13 +173,19 @@ def process_contributions(org: str, repo: str) -> Dict[str, Contributor]:
                 contributors[reviewer_username]['prsReviewed'] += 1
         
         # Update pagination
-        page_info = pull_requests.get('pageInfo', {})
+        page_info = search_results.get('pageInfo', {})
         has_next_page = page_info.get('hasNextPage', False)
         cursor = page_info.get('endCursor')
         
         print(f"Processed page. Contributors so far: {len(contributors)}")
     
-    print(f"Found {len(contributors)} contributors for {org}/{repo}")
+    # Debug output for specific contributor
+    for username, prs in pr_details.items():
+        print(f"\nContributor {username} PRs in 2024:")
+        for pr in prs:
+            print(f"  PR #{pr['number']}: {pr['title']} (merged: {pr['mergedAt']})")
+    
+    print(f"\nFound {len(contributors)} contributors for {org}/{repo}")
     return contributors
 
 def handler(event, context):
@@ -250,3 +245,14 @@ def handler(event, context):
                 'error': str(e)
             })
         }
+    
+
+if __name__ == "__main__":
+    event = {
+        'org': 'aws',
+        'repo': 'aws-cdk'
+    }
+    result = handler(event, None)
+    
+    # Print the status code
+    print(f"\nbody: {result['body']}")
