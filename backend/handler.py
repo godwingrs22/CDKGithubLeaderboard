@@ -2,7 +2,7 @@ import json
 import os
 import datetime
 import urllib.request
-from typing import Dict, List, Optional, TypedDict, Any
+from typing import Dict, List, Optional, TypedDict, Any, Set
 
 # Get GitHub token from environment variables
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
@@ -63,134 +63,215 @@ def calculate_score(contributor: Contributor) -> int:
     """
     return contributor['prsMerged'] * 10 + contributor['prsReviewed'] * 8
 
-def fetch_contributions_data(org: str, repo: str, cursor: Optional[str] = None) -> Dict[str, Any]:
-    search_query = f"repo:{org}/{repo} is:pr is:merged merged:>=2024-01-01"
+def fetch_all_contributors(org: str, repo: str) -> Set[str]:
+    """
+    Fetch all contributors with pagination
     
-    query = """
-        query($queryString: String!, $cursor: String) {
-          search(
-            query: $queryString
-            type: ISSUE
-            first: 100
-            after: $cursor
-          ) {
-            nodes {
-              ... on PullRequest {
-                number
-                author {
-                  login
+    Args:
+        org: GitHub organization/owner name
+        repo: Repository name
+        
+    Returns:
+        Set of contributor usernames
+    """
+    contributors: Set[str] = set()
+    has_next_page = True
+    cursor = None
+    
+    while has_next_page:
+        query = """
+            query($queryString: String!, $cursor: String) {
+              search(query: $queryString, type: ISSUE, first: 100, after: $cursor) {
+                pageInfo {
+                  hasNextPage
+                  endCursor
                 }
-                mergedAt
-                title
-                reviews(first: 100) {
-                  nodes {
+                nodes {
+                  ... on PullRequest {
                     author {
                       login
                     }
-                    createdAt
-                    state
+                    reviews(first: 100) {
+                      nodes {
+                        author {
+                          login
+                        }
+                      }
+                    }
                   }
                 }
               }
             }
-            pageInfo {
-              hasNextPage
-              endCursor
-            }
-          }
-        }
-    """
-    
-    return github_graphql(query, {
-        'queryString': search_query,
-        'cursor': cursor
-    })
-
-def process_contributions(org: str, repo: str) -> Dict[str, Contributor]:
-    """
-    Process contributions for a repository
-    """
-    contributors: Dict[str, Contributor] = {}
-    has_next_page = True
-    cursor = None
-    
-    print(f"Fetching contributions data for {org}/{repo}")
-    
-    # Track PRs for debugging
-    pr_details = {}
-    
-    while has_next_page:
-        response = fetch_contributions_data(org, repo, cursor)
-        search_results = response.get('data', {}).get('search')
+        """
         
-        if not search_results:
-            print(f"Error fetching data. Response: {json.dumps(response)}")
-            break
+        search_query = f"repo:{org}/{repo} is:pr is:merged merged:>=2024-01-01"
+        response = github_graphql(query, {
+            'queryString': search_query,
+            'cursor': cursor
+        })
+        
+        search_data = response.get('data', {}).get('search', {})
+        
+        # Process authors and reviewers
+        for pr in search_data.get('nodes', []):
+            if pr.get('author', {}).get('login'):
+                contributors.add(pr['author']['login'])
             
-        # Process pull requests
-        for pr in search_results.get('nodes', []):
-            if not pr or not pr.get('author'):
-                continue
-                
-            author = pr['author']
-            username = author['login']
-            
-            # Debug logging
-            if username not in pr_details:
-                pr_details[username] = []
-            pr_details[username].append({
-                'number': pr['number'],
-                'title': pr['title'],
-                'mergedAt': pr['mergedAt']
-            })
-            
-            if username not in contributors:
-                contributors[username] = {
-                    'username': username,
-                    'prsMerged': 0,
-                    'prsReviewed': 0,
-                    'totalScore': 0
-                }
-                
-            contributors[username]['prsMerged'] += 1
-            
-            # Process reviews
             for review in pr.get('reviews', {}).get('nodes', []):
-                if not review or not review.get('author'):
-                    continue
-                
-                reviewer = review['author']
-                reviewer_username = reviewer['login']
-                
-                if reviewer_username not in contributors:
-                    contributors[reviewer_username] = {
-                        'username': reviewer_username,
-                        'prsMerged': 0,
-                        'prsReviewed': 0,
-                        'totalScore': 0
-                    }
-                    
-                contributors[reviewer_username]['prsReviewed'] += 1
+                if review.get('author', {}).get('login'):
+                    contributors.add(review['author']['login'])
         
-        # Update pagination
-        page_info = search_results.get('pageInfo', {})
+        page_info = search_data.get('pageInfo', {})
         has_next_page = page_info.get('hasNextPage', False)
         cursor = page_info.get('endCursor')
         
-        print(f"Processed page. Contributors so far: {len(contributors)}")
+        print(f"Found {len(contributors)} contributors so far...")
     
-    # Debug output for specific contributor
-    for username, prs in pr_details.items():
-        print(f"\nContributor {username} PRs in 2024:")
-        for pr in prs:
-            print(f"  PR #{pr['number']}: {pr['title']} (merged: {pr['mergedAt']})")
-    
-    print(f"\nFound {len(contributors)} contributors for {org}/{repo}")
     return contributors
 
-def handler(event, context):
+def fetch_contributions_data(org: str, repo: str, username: str) -> Contributor:
     """
-    Lambda handler function for GitHub leaderboard
+    Fetch contributions data for a specific user
+    
+    Args:
+        org: GitHub organization/owner name
+        repo: Repository name
+        username: GitHub username
+        
+    Returns:
+        Contributor data
+    """
+    # Get merged PRs count with pagination
+    merged_count = 0
+    merge_cursor = None
+    has_next_page = True
+    
+    while has_next_page:
+        merge_query = f"repo:{org}/{repo} author:{username} is:pr is:merged merged:>=2024-01-01"
+        merge_response = github_graphql("""
+            query($queryString: String!, $cursor: String) {
+              search(query: $queryString, type: ISSUE, first: 100, after: $cursor) {
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+                nodes {
+                  ... on PullRequest {
+                    number
+                  }
+                }
+              }
+            }
+        """, {
+            'queryString': merge_query,
+            'cursor': merge_cursor
+        })
+        
+        search_data = merge_response.get('data', {}).get('search', {})
+        merged_count += len(search_data.get('nodes', []))
+        
+        page_info = search_data.get('pageInfo', {})
+        has_next_page = page_info.get('hasNextPage', False)
+        merge_cursor = page_info.get('endCursor')
+
+    # Get reviews count with pagination
+    review_count = 0
+    review_cursor = None
+    has_next_page = True
+    
+    while has_next_page:
+        review_query = f"repo:{org}/{repo} is:pr is:merged merged:>=2024-01-01 reviewed-by:{username}"
+        review_response = github_graphql("""
+            query($queryString: String!, $cursor: String) {
+              search(query: $queryString, type: ISSUE, first: 100, after: $cursor) {
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+                nodes {
+                  ... on PullRequest {
+                    number
+                  }
+                }
+              }
+            }
+        """, {
+            'queryString': review_query,
+            'cursor': review_cursor
+        })
+        
+        search_data = review_response.get('data', {}).get('search', {})
+        review_count += len(search_data.get('nodes', []))
+        
+        page_info = search_data.get('pageInfo', {})
+        has_next_page = page_info.get('hasNextPage', False)
+        review_cursor = page_info.get('endCursor')
+
+    contributor: Contributor = {
+        'username': username,
+        'prsMerged': merged_count,
+        'prsReviewed': review_count,
+        'totalScore': 0
+    }
+    
+    contributor['totalScore'] = calculate_score(contributor)
+    return contributor
+
+def is_active_contributor(contributor: Contributor) -> bool:
+    """
+    Check if a contributor has active contributions since 2024
+    
+    Args:
+        contributor: Contributor data to check
+        
+    Returns:
+        True if contributor has either merged PRs or reviewed PRs, False otherwise
+    """
+    return (
+        contributor['prsMerged'] > 0 or 
+        contributor['prsReviewed'] > 0
+    )
+
+def process_contributions(org: str, repo: str) -> Dict[str, Contributor]:
+    """
+    Process contributions for all contributors
+    
+    Args:
+        org: GitHub organization/owner name
+        repo: Repository name
+        
+    Returns:
+        Dictionary of active contributors and their data
+    """
+    active_contributors: Dict[str, Contributor] = {}
+    
+    print(f"Fetching contributors for {org}/{repo}")
+    potential_contributors = fetch_all_contributors(org, repo)
+    print(f"Found {len(potential_contributors)} total potential contributors")
+    
+    for i, username in enumerate(potential_contributors, 1):
+        print(f"Processing contributor {i}/{len(potential_contributors)}: {username}")
+        contributor = fetch_contributions_data(org, repo, username)
+        
+        if is_active_contributor(contributor):
+            active_contributors[username] = contributor
+            print(f"Added {username} with {contributor['prsMerged']} PRs merged and {contributor['prsReviewed']} PRs reviewed")
+        else:
+            print(f"Skipped {username} (no active contributions since 2024)")
+    
+    print(f"\nFound {len(active_contributors)} active contributors out of {len(potential_contributors)} potential contributors")
+    return active_contributors
+
+def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """
+    Lambda handler function
+    
+    Args:
+        event: Lambda event
+        context: Lambda context
+        
+    Returns:
+        API response with leaderboard data
     """
     print(f"Received event: {json.dumps(event)}")
     
@@ -208,11 +289,7 @@ def handler(event, context):
         if not contributors_dict:
             print("Warning: No contributors found")
         
-        contributors_list = []
-        for username, contributor in contributors_dict.items():
-            contributor['totalScore'] = calculate_score(contributor)
-            contributors_list.append(contributor)
-        
+        contributors_list = list(contributors_dict.values())
         contributors_list.sort(key=lambda c: c['totalScore'], reverse=True)
         top_contributors = contributors_list[:25]
 
@@ -221,6 +298,9 @@ def handler(event, context):
             'contributors': top_contributors,
             'totalContributors': len(contributors_dict)
         }
+        
+        print("\nLeaderboard Data:")
+        print(json.dumps(leaderboard_data, indent=2))
         
         return {
             'statusCode': 200,
@@ -245,14 +325,3 @@ def handler(event, context):
                 'error': str(e)
             })
         }
-    
-
-if __name__ == "__main__":
-    event = {
-        'org': 'aws',
-        'repo': 'aws-cdk'
-    }
-    result = handler(event, None)
-    
-    # Print the status code
-    print(f"\nbody: {result['body']}")
