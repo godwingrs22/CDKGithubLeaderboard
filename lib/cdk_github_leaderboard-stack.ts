@@ -21,7 +21,7 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
         },
       }),
       memorySize: 512,
-      timeout: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.minutes(15),
       environment: {
         PYTHONPATH: '/var/runtime:/var/task',
       },
@@ -29,7 +29,7 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
     });
 
     // Output the Lambda function ARN
-    new cdk.CfnOutput(this, 'PythonFunctionArn', {
+    new cdk.CfnOutput(this, 'CdkGithubLeaderboardFunctionArn', {
       value: CdkGithubLeaderboardFunction.functionArn,
       description: 'ARN of the Python Lambda function',
     });
