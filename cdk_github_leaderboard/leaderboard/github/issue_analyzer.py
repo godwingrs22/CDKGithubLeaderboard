@@ -1,98 +1,66 @@
-import os
-import json
-from datetime import datetime
-import requests
-import pandas as pd
+
+from typing import Dict
+from pathlib import Path
 from typing import List, Dict
-
-MAINTAINERS = [
-    'rix0rrr', 'iliapolo', 'otaviomacedo', 'kaizencc',
-    'TheRealAmazonKendra', 'mrgrain', 'pahud', 'ashishdhingra',
-    'kellertk', 'moelasmar', 'paulhcsun', 'GavinZZ', 'xazhao',
-    'gracelu0', 'shikha372', 'QuantumNeuralCoder', 'godwingrs22',
-    'bergjaak', 'samson-keung', 'IanKonlog', 'Leo10Gama',
-    'scorbiere', 'jiayiwang7', 'saiyush', '5d', 'iankhou',
-    'SimonCMoore'
-]
-
-def run_github_query(query: str, token: str) -> Dict:
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
-    response = requests.post(
-        'https://api.github.com/graphql',
-        json={'query': query},
-        headers=headers
-    )
-    return response.json()
-
-def analyze_issues(token: str) -> pd.DataFrame:
-    query = """
-    query($cursor: String) {
-      repository(owner: "aws", name: "aws-cdk") {
-        issues(
-          first: 100,
-          after: $cursor,
-          orderBy: {field: CREATED_AT, direction: DESC},
-          filterBy: {since: "2024-01-01T00:00:00Z"}
-        ) {
-          nodes {
-            title
-            url
-            author {
-              login
-            }
-            createdAt
-            state
-          }
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-        }
-      }
-    }
-    """
-    
-    all_issues = []
-    has_next_page = True
-    cursor = None
-
-    while has_next_page:
+    if response.status_code != 200:
+        raise Exception(f"Query failed with status code: {response.status_code}")
+    page_count = 0
+    print("\nFetching GitHub issues...")
+        page_count += 1
+        print(f"\rFetching page {page_count}...", end="", flush=True)
+        
+        result = run_github_query(
+            query.replace("$cursor", f'"{cursor}"' if cursor else "null"), 
+            token
+        )
+        
+        if 'errors' in result:
+            raise Exception(f"GraphQL Error: {result['errors']}")
+            
         result = run_github_query(query.replace("$cursor", f'"{cursor}"' if cursor else "null"), token)
-        data = result['data']['repository']['issues']
+    print("\n\nProcessing data...")
+    if df.empty:
+        return pd.DataFrame(columns=['author', 'title', 'created_at', 'url'])
         
-        for issue in data['nodes']:
-            if issue['author'] and issue['author']['login'] not in MAINTAINERS:
-                all_issues.append({
-                    'author': issue['author']['login'],
-                    'title': issue['title'],
-                    'url': issue['url'],
-                    'created_at': issue['createdAt']
-                })
-        
-        has_next_page = data['pageInfo']['hasNextPage']
-        cursor = data['pageInfo']['endCursor']
-
-    df = pd.DataFrame(all_issues)
-    return df.groupby('author').agg({
-        'title': 'count',
-        'created_at': 'max',
-        'url': lambda x: list(x)[-1]
-    }).reset_index()
-
+if __name__ == "__main__":
 def handler(event, context):
     """Lambda handler function"""
-    try:
-        token = os.environ['GITHUB_TOKEN']
-        df = analyze_issues(token)
+        # Load environment variables
+        from dotenv import load_dotenv
+        load_dotenv()
         
+        # Get GitHub token
+        token = os.getenv('GITHUB_TOKEN')
+        if not token:
+            raise ValueError("GITHUB_TOKEN environment variable is not set")
+            
+        # Create output directory if it doesn't exist
+        script_dir = Path(__file__).parent
+        output_dir = script_dir.parent.parent.parent / 'output'
+        output_dir.mkdir(exist_ok=True)
+        
+        # Run analysis
+        token = os.environ['GITHUB_TOKEN']
+        # Generate output filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file = output_dir / f'cdk_contributors_{timestamp}.csv'
         # Convert to CSV
         output = df.to_csv(index=False)
-        
+        # Save to CSV
+        df.to_csv(output_file, index=False)
         # You might want to save this to S3 or another storage service
+        # Print summary
+        print("\nAnalysis Complete!")
+        print(f"Total contributors analyzed: {len(df)}")
+        print(f"Results saved to: {output_file}")
         
+        # Display top contributors
+        print("\nTop 10 Contributors:")
+        print("-----------------")
+        top_10 = df.sort_values('title', ascending=False).head(10)
+        for _, row in top_10.iterrows():
+            print(f"{row['author']}: {row['title']} issues")
+            
         return {
             'statusCode': 200,
             'body': json.dumps({
@@ -101,7 +69,8 @@ def handler(event, context):
                 'contributor_count': len(df)
             })
         }
-    except Exception as e:
+        print(f"\nError: {str(e)}")
+        raise
         return {
             'statusCode': 500,
             'body': json.dumps({
