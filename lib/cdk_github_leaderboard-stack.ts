@@ -11,8 +11,16 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
     const CdkGithubLeaderboardFunction = new lambda.Function(this, 'CdkGithubLeaderboardFunction', {
       runtime: lambda.Runtime.PYTHON_3_10,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../backend')),
-      memorySize: 128,
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda'), {
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_9.bundlingImage,
+          command: [
+            'bash', '-c',
+            'pip install -r requirements.txt -t /asset-output && cp -au . /asset-output'
+          ],
+        },
+      }),
+      memorySize: 512,
       timeout: cdk.Duration.seconds(30),
       environment: {
         PYTHONPATH: '/var/runtime:/var/task',

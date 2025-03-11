@@ -1,28 +1,27 @@
 import json
+from issue_analyzer import fetch_github_issues
 
-def handler(event, context):
-    """
-    Simple Lambda function handler in Python
-    
-    Parameters:
-    event (dict): Input event data
-    context (LambdaContext): Lambda runtime context
-    
-    Returns:
-    dict: Response with status code and message
-    """
-    print(f"Event received: {json.dumps(event)}")
-    
-    name = event.get('name', 'World')
-    message = f"Hello, {name}!"
-    
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'application/json'
-        },
-        'body': json.dumps({
-            'message': message,
-            'input': event
-        })
-    }
+def lambda_handler(event, context):
+    try:
+        # Call the fetch_github_issues function
+        fetch_github_issues()
+        
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'message': 'Successfully generated GitHub issues report',
+                'status': 'success'
+            })
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'message': f'Error generating GitHub issues report: {str(e)}',
+                'status': 'error'
+            })
+        }
+
+# For local testing
+if __name__ == '__main__':
+    lambda_handler({}, None)
