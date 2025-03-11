@@ -25,14 +25,14 @@ echo "🔨 Building React app..."
 npm run build
 
 # Check if build directory exists
-if [ ! -d "build" ]; then
+if [ ! -d "cdk-leaderboard/build" ]; then
     echo "❌ Build failed - build directory does not exist"
     exit 1
 fi
 
 # Deploy to S3
 echo "📤 Deploying website to S3..."
-aws s3 sync build/ s3://$BUCKET_NAME --delete
+aws s3 sync cdk-leaderboard/build/ s3://$BUCKET_NAME --delete
 
 # Navigate back to root
 cd ../../
