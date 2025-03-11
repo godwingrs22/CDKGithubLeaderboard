@@ -4,7 +4,7 @@ import datetime
 from models import Contributor
 from typing import Dict, List, Optional, TypedDict, Any, Set
 from github_api import GitHubAPI
-from issue_analyzer import fetch_github_issues
+# from issue_analyzer import fetch_github_issues
 from constants import AUTHORS_TO_EXCLUDE
 
 def calculate_score(contributor: Contributor) -> int:
@@ -132,7 +132,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         print(f"Generating leaderboard for {org}/{repo}")
 
         # Call the fetch_github_issues function
-        fetch_github_issues()
+        # fetch_github_issues()
         
         contributors_dict = process_contributions(github_api, org, repo)
         
