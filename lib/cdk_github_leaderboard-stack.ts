@@ -11,7 +11,7 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
     const CdkGithubLeaderboardFunction = new lambda.Function(this, 'CdkGithubLeaderboardFunction', {
       runtime: lambda.Runtime.PYTHON_3_10,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda'), {
+      code: lambda.Code.fromAsset(path.join(__dirname, '../backend'), {
         bundling: {
           image: lambda.Runtime.PYTHON_3_10.bundlingImage,
           command: [
