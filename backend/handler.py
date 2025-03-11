@@ -3,6 +3,7 @@ import os
 import datetime
 import urllib.request
 from typing import Dict, List, Optional, TypedDict, Any, Set
+from issue_analyzer import fetch_github_issues
 
 # Get GitHub token from environment variables
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
@@ -283,6 +284,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             raise ValueError("GITHUB_TOKEN environment variable is not set")
             
         print(f"Generating leaderboard for {org}/{repo}")
+
+        # Call the fetch_github_issues function
+        fetch_github_issues()
         
         contributors_dict = process_contributions(org, repo)
         
@@ -325,3 +329,15 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'error': str(e)
             })
         }
+
+# For local testing
+if __name__ == "__main__":
+    event = {
+        'org': 'aws',
+        'repo': 'aws-cdk'
+    }
+
+    result = handler(event, None)
+    
+    # Print the status code
+    print(f"\nbody: {result['body']}")
