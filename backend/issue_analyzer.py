@@ -7,14 +7,13 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # Import maintainers from separate file
-from maintainers import MAINTAINERS
+from constants import AUTHORS_TO_EXCLUDE, EXCLUDED_LABELS
 
 # Load environment variables
 load_dotenv()
 
 # Constants
-EXCLUDED_AUTHORS = ['github-actions'] + MAINTAINERS
-EXCLUDED_LABELS = ['contribution/core']
+EXCLUDED_AUTHORS = ['github-actions'] + AUTHORS_TO_EXCLUDE
 
 def fetch_github_issues():
     try:
