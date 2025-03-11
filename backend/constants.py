@@ -1,4 +1,5 @@
-MAINTAINERS = [
+AUTHORS_TO_EXCLUDE = [
+  'aws-cdk-automation',
   'rix0rrr',
   'iliapolo',
   'otaviomacedo',
@@ -27,3 +28,5 @@ MAINTAINERS = [
   'iankhou',
   'SimonCMoore'
 ]
+
+EXCLUDED_LABELS = ['contribution/core']
