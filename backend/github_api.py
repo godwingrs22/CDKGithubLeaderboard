@@ -180,7 +180,7 @@ class GithubAPI:
             List of GitHub usernames
         """
         query = f"repo:{org}/{repo} is:issue -is:pr created:>=2024-01-01"
-        response = self._execute_graphql_query("""
+        graphql_query = """
             query($queryString: String!, $cursor: String) {
               search(query: $queryString, type: ISSUE, first: 100, after: $cursor) {
                 pageInfo {
@@ -196,11 +196,8 @@ class GithubAPI:
                 }
               }
             }
-        """, {
+        """, 
+        return self.graphql_query(graphql_query,{
             'queryString': query,
             'cursor': None
         })
-        
-        search_data = response.get('data', {}).get('search', {})
-        return [issue['author']['login'] for issue in search_data.get('nodes', []) 
-                if issue.get('author', {}).get('login')]
