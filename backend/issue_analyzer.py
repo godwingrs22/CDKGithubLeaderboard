@@ -5,6 +5,7 @@ from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
 from dotenv import load_dotenv
 from pathlib import Path
+from typing import TypedDict, List, Literal, Dict
 
 # Import maintainers from separate file
 from constants import AUTHORS_TO_EXCLUDE, EXCLUDED_LABELS
@@ -15,142 +16,178 @@ load_dotenv()
 # Constants
 EXCLUDED_AUTHORS = ['github-actions'] + AUTHORS_TO_EXCLUDE
 
-def fetch_github_issues():
+# Type definitions
+class Discussion(TypedDict):
+    discussion_number: int
+    title: str
+    role: Literal['author', 'commenter', 'replier']
+
+class UserDiscussionStats(TypedDict):
+    username: str
+    discussions_answered: int
+    discussions: List[Discussion]
+
+def fetch_github_discussions(client: Client):
+            query = gql("""
+        query($owner: String!, $repo: String!) {
+          repository(owner: $owner, name: $repo) {
+            discussions(first: 100) {
+                                    nodes {
+                number
+                title
+                                author {
+                                    login
+                                    }
+                comments(first: 100) {
+                  nodes {
+                    author {
+                      login
+                    }
+                                replies(first: 100) {
+                                    nodes {
+                                        author {
+                      login 
+                            }
+                        }
+                    }
+                }
+                        }
+                    }
+                }
+            }
+        }
+            """)
+
+    response = client.execute(query, variable_values={
+        'owner': os.getenv('GITHUB_OWNER'),
+        'repo': os.getenv('GITHUB_REPO')
+    })
+    return response['repository']['discussions']['nodes']
+
+def analyze_user_discussion_activity(discussions_data) -> List[UserDiscussionStats]:
+    user_stats: Dict[str, UserDiscussionStats] = {}
+    for discussion in discussions_data:
+        # Track discussion author
+        author_username = discussion['author']['login']
+        if author_username not in user_stats:
+            user_stats[author_username] = {
+                'username': author_username,
+                'discussions_answered': 0,
+                'discussions': []
+            }
+        
+        user_stats[author_username]['discussions'].append({
+            'discussion_number': discussion['number'],
+            'title': discussion['title'],
+            'role': 'author'
+        })
+
+        # Track commenters
+        for comment in discussion['comments']['nodes']:
+            commenter_username = comment['author']['login']
+            if commenter_username not in user_stats:
+                user_stats[commenter_username] = {
+                    'username': commenter_username,
+                    'discussions_answered': 0,
+                    'discussions': []
+                }
+
+            user_stat = user_stats[commenter_username]
+            if not any(d['discussion_number'] == discussion['number'] for d in user_stat['discussions']):
+                user_stat['discussions_answered'] += 1
+                user_stat['discussions'].append({
+                    'discussion_number': discussion['number'],
+                    'title': discussion['title'],
+                    'role': 'commenter'
+                })
+
+            # Track reply authors
+            for reply in comment['replies']['nodes']:
+                replier_username = reply['author']['login']
+                if replier_username not in user_stats:
+                    user_stats[replier_username] = {
+                        'username': replier_username,
+                        'discussions_answered': 0,
+                        'discussions': []
+                    }
+
+                replier_stat = user_stats[replier_username]
+                if not any(d['discussion_number'] == discussion['number'] for d in replier_stat['discussions']):
+                    replier_stat['discussions_answered'] += 1
+                    replier_stat['discussions'].append({
+                        'discussion_number': discussion['number'],
+                        'title': discussion['title'],
+                        'role': 'replier'
+                    })
+
+    # Sort by number of discussions answered
+    return sorted(
+        list(user_stats.values()),
+        key=lambda x: x['discussions_answered'],
+        reverse=True
+        )
+
+def generate_user_activity_report(owner: str, repo: str, user_stats: List[UserDiscussionStats]) -> str:
+    report = f"Discussion Activity Report for {owner}/{repo}\n\n"
+    
+    for user in user_stats:
+        report += f"{user['username']}:\n"
+        report += f"Total Discussions Answered: {user['discussions_answered']}\n"
+        report += "Discussion Participation:\n"
+        
+        for disc in user['discussions']:
+            report += f"- #{disc['discussion_number']}: {disc['title']} ({disc['role']})\n"
+        report += "\n"
+    
+    return report
+
+def fetch_github_data():
     try:
-        # Set up GraphQL client
         transport = RequestsHTTPTransport(
             url='https://api.github.com/graphql',
             headers={'Authorization': f'Bearer {os.getenv("GITHUB_TOKEN")}'}
         )
         client = Client(transport=transport, fetch_schema_from_transport=True)
 
-        # Initialize variables for pagination
-        has_next_page = True
-        end_cursor = None
-        all_issues = []
+        # Fetch and analyze discussions
+        discussions_data = fetch_github_discussions(client)
+        user_discussion_stats = analyze_user_discussion_activity(discussions_data)
 
-        while has_next_page:
-            # GraphQL query
-            query = gql("""
-                query($cursor: String) {
-                    repository(owner: "aws", name: "aws-cdk") {
-                        issues(
-                            first: 100,
-                            after: $cursor,
-                            orderBy: {field: CREATED_AT, direction: DESC},
-                            filterBy: {since: "2024-01-01T00:00:00Z"}
-                        ) {
-                            nodes {
-                                title
-                                url
-                                author {
-                                    login
-                                }
-                                createdAt
-                                state
-                                labels(first: 100) {
-                                    nodes {
-                                        name
-                                    }
-                                }
-                            }
-                            pageInfo {
-                                hasNextPage
-                                endCursor
-                            }
-                        }
-                    }
-                }
-            """)
-
-            # Execute query
-            response = client.execute(query, variable_values={'cursor': end_cursor})
-            
-            # Process response
-            issues = response['repository']['issues']['nodes']
-            all_issues.extend(issues)
-            
-            # Update pagination info
-            page_info = response['repository']['issues']['pageInfo']
-            has_next_page = page_info['hasNextPage']
-            end_cursor = page_info['endCursor']
-
-        # Filter issues
-        filtered_issues = [
-            issue for issue in all_issues
-            if issue.get('author') and
-            issue['author']['login'] not in EXCLUDED_AUTHORS and
-            not any(label['name'] in EXCLUDED_LABELS for label in issue['labels']['nodes'])
-        ]
-
-        # Group by author
-        author_stats = {}
-        for issue in filtered_issues:
-            author = issue['author']['login']
-            if author not in author_stats:
-                author_stats[author] = {
-                    'login': author,
-                    'issue_count': 0,
-                    'issues': []
-                }
-            
-            author_stats[author]['issue_count'] += 1
-            author_stats[author]['issues'].append({
-                'title': issue['title'],
-                'url': issue['url'],
-                'created_at': issue['createdAt']
-            })
-
-        # Sort authors by issue count
-        sorted_authors = sorted(
-            author_stats.values(),
-            key=lambda x: x['issue_count'],
-            reverse=True
+        # Generate report
+        report = generate_user_activity_report(
+            os.getenv('GITHUB_OWNER', ''),
+            os.getenv('GITHUB_REPO', ''),
+            user_discussion_stats
         )
+        
+        # Output report
+        print(report)
 
-        # Prepare output directory
-        output_dir = Path(__file__).parent.parent / 'output'
-        output_dir.mkdir(exist_ok=True)
-
-        # Generate filename with current date
+        # Write to CSV
         current_date = datetime.now().strftime('%Y-%m-%d')
-        filename = f'aws-cdk-external-contributors-{current_date}.csv'
-        filepath = output_dir / filename
-
-        # Write CSV file
-        with open(filepath, 'w', newline='', encoding='utf-8') as f:
+        output_dir = Path('reports')
+        output_dir.mkdir(exist_ok=True)
+        discussions_filename = f'aws-cdk-discussions-activity-{current_date}.csv'
+        discussions_filepath = output_dir / discussions_filename
+        
+        with open(discussions_filepath, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(['Rank', 'Author', 'Issues Created', 'Latest Issue', 
-                           'Latest Issue Date', 'Latest Issue URL'])
-            
-            for idx, author in enumerate(sorted_authors, 1):
-                latest_issue = author['issues'][0] if author['issues'] else {
-                    'title': '',
-                    'created_at': '',
-                    'url': ''
-                }
-                writer.writerow([
-                    idx,
-                    author['login'],
-                    author['issue_count'],
-                    latest_issue['title'],
-                    datetime.fromisoformat(latest_issue['created_at'].replace('Z', '+00:00')).strftime('%Y-%m-%d'),
-                    latest_issue['url']
-                ])
+            writer.writerow(['Username', 'Discussions Answered', 'Discussion Number',
+                           'Discussion Title', 'Role'])
+            for user_stat in user_discussion_stats:
+                for discussion in user_stat['discussions']:
+                    writer.writerow([
+                        user_stat['username'],
+                        user_stat['discussions_answered'],
+                        discussion['discussion_number'],
+                        discussion['title'],
+                        discussion['role']
+                    ])
 
-        # Print statistics
-        print('\nAWS CDK External Contributors Statistics (Since January 1st, 2024)')
-        print('===========================================================')
-        print(f'Total issues analyzed: {len(all_issues)}')
-        print(f'External contributor issues: {len(filtered_issues)}')
-        print(f'Unique external contributors: {len(author_stats)}')
-        print(f'\nExcluded:')
-        print(f'- Labels: {", ".join(EXCLUDED_LABELS)}')
-        print(f'- Maintainers & System: {len(EXCLUDED_AUTHORS)} users')
-        print(f'\nData has been exported to: {filepath}')
+        print(f'Discussion activity data has been exported to: {discussions_filepath}')
 
     except Exception as e:
-        print('Error fetching issues:', str(e))
+        print('Error fetching data:', str(e))
 
-if __name__ == '__main__':
-    fetch_github_issues()
+if __name__ == "__main__":
+    fetch_github_data()
