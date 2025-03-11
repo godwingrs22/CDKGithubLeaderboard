@@ -6,6 +6,10 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import { RemovalPolicy } from 'aws-cdk-lib';
+import { join } from 'path';
 
 export class CdkGithubLeaderboardStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -14,6 +18,28 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
     const githubTokenSecret = new secretsmanager.Secret(this, 'GitHubTokenSecret', {
       description: 'GitHub Personal Access Token for API access',
       secretName: 'github-token',
+    });
+
+    const websiteBucket = new s3.Bucket(this, 'CdkGithubLeaderboardWebsiteBucket', {
+      bucketName: 'cdk-leaderboard',
+      websiteIndexDocument: 'index.html',
+      websiteErrorDocument: 'index.html',
+      publicReadAccess: true,
+      blockPublicAccess: new s3.BlockPublicAccess({
+        blockPublicAcls: false,
+        blockPublicPolicy: false,
+        ignorePublicAcls: false,
+        restrictPublicBuckets: false
+      }),
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
+    websiteBucket.addCorsRule({
+      allowedMethods: [s3.HttpMethods.GET],
+      allowedOrigins: ['*'],
+      allowedHeaders: ['*'],
+      maxAge: 3000,
     });
 
     const cdkGithubLeaderboardFunction = new lambda.Function(this, 'CdkGithubLeaderboardFunction', {
@@ -45,10 +71,19 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
  
      rule.addTarget(new targets.LambdaFunction(cdkGithubLeaderboardFunction));
 
-    // Output the Lambda function ARN
     new cdk.CfnOutput(this, 'CdkGithubLeaderboardFunctionArn', {
       value: cdkGithubLeaderboardFunction.functionArn,
       description: 'ARN of the Python Lambda function',
+    });
+
+    new cdk.CfnOutput(this, 'CdkGithubLeaderboardWebsiteURL', {
+      value: websiteBucket.bucketWebsiteUrl,
+      description: 'URL for leaderboard website',
+    });
+
+    new cdk.CfnOutput(this, 'BucketName', {
+      value: websiteBucket.bucketName,
+      description: 'Name of S3 bucket',
     });
   }
 }

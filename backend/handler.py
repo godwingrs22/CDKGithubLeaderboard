@@ -214,7 +214,7 @@ if __name__ == "__main__":
     # Set environment variables for local testing
     os.environ['AWS_REGION'] = 'us-east-1'  # Replace with your region
     # Find the secret ARN in AWS Secrets Manager console
-    os.environ['GITHUB_TOKEN_SECRET_ARN'] = ''
+    os.environ['GITHUB_TOKEN_SECRET_ARN'] = 'arn:aws:secretsmanager:us-east-1:818788848451:secret:github-token-FnPbMW'
 
     event = {
         'org': 'aws',
