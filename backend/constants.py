@@ -1,4 +1,5 @@
-export const MAINTAINERS = [
+AUTHORS_TO_EXCLUDE = [
+  'aws-cdk-automation',
   'rix0rrr',
   'iliapolo',
   'otaviomacedo',
@@ -26,4 +27,6 @@ export const MAINTAINERS = [
   '5d',
   'iankhou',
   'SimonCMoore'
-];
+]
+
+EXCLUDED_LABELS = ['contribution/core']
