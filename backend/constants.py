@@ -26,7 +26,9 @@ AUTHORS_TO_EXCLUDE = [
   'saiyush',
   '5d',
   'iankhou',
-  'SimonCMoore'
+  'SimonCMoore',
+  'github-advanced-security',
+  'dependabot'
 ]
 
 EXCLUDED_LABELS = ['contribution/core']

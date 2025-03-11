@@ -46,7 +46,7 @@ def calculate_score(contributor: Contributor) -> int:
     """
     Calculate the score for a contributor
     """
-    return contributor['prsMerged'] * 10 + contributor['prsReviewed'] * 8
+    return contributor['prsMerged'] * 10 + contributor['prsReviewed'] * 8 + contributor['issuesOpened'] * 5 + contributor['discussionsAnswered'] * 3
 
 def is_author_to_exclude(username: str) -> bool:
     """
@@ -80,7 +80,28 @@ def fetch_all_contributors(github_api: GitHubAPI, org: str, repo: str) -> Set[st
     
     return contributors
 
-def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, username: str) -> Contributor:
+def get_discussion_points(github_api, username):
+    """
+    Get points for answered discussions for a given username
+    Returns number of points based on answered discussions
+    """
+    try:
+        # Import here to avoid circular dependencies
+        from issue_analyzer import get_answered_discussions
+        
+        # Get discussion data for all users
+        discussion_data = get_answered_discussions(org, repo, github_api.token)
+        
+        # Get count of discussions answered by this user
+        discussions_answered = discussion_data.get(username, 0)
+        
+        return discussions_answered
+        
+    except Exception as e:
+        logger.error(f"Error getting discussion points for {username}: {str(e)}")
+        return 0
+
+def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, username: str, github_token = None) -> Contributor:
     """
     Fetch contributions data for a specific user
     """
@@ -112,10 +133,30 @@ def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, usernam
         has_next_page = page_info.get('hasNextPage', False)
         cursor = page_info.get('endCursor')
 
+    # Get opened issues count
+    issues_opened = 0
+    has_next_page = True
+    cursor = None 
+
+    while has_next_page:
+        response = github_api.get_issues_opened(org, repo, username, cursor)
+        search_data = response.get('data', {}).get('search', {})
+        issues_opened += len(search_data.get('nodes', []))
+
+        page_info = search_data.get('pageInfo', {})
+        has_next_page = page_info.get('hasNextPage', False)
+        cursor = page_info.get('endCursor')
+
+
+    # Get discussions data
+    discussions_answered = get_discussion_points(github_api, username)
+
     contributor: Contributor = {
         'username': username,
         'prsMerged': merged_count,
         'prsReviewed': review_count,
+        'issuesOpened': issues_opened,
+        'discussionsAnswered': discussions_answered,
         'totalScore': 0
     }
     
@@ -138,11 +179,11 @@ def process_contributions(github_api: GitHubAPI, org: str, repo: str) -> Dict[st
             continue
             
         print(f"Processing contributor {i}/{len(potential_contributors)}: {username}")
-        contributor = fetch_contributions_data(github_api, org, repo, username)
+        contributor = fetch_contributions_data(github_api, org, repo, username, )
         
-        if contributor['prsMerged'] > 0 or contributor['prsReviewed'] > 0:
+        if contributor['prsMerged'] > 0 or contributor['prsReviewed'] > 0 or contributor['issuesOpened'] > 0 or contributor['discussionsAnswered'] > 0:
             active_contributors[username] = contributor
-            print(f"Added {username} with {contributor['prsMerged']} PRs merged and {contributor['prsReviewed']} PRs reviewed")
+            print(f"Added {username} with {contributor['prsMerged']} PRs merged, {contributor['prsReviewed']} PRs reviewed, issues opened {contributor['issuesOpened']}, Discussions Answered {contributor['discussionsAnswered']} ")
     
     print(f"\nSummary:")
     print(f"Total potential contributors: {len(potential_contributors)}")
@@ -167,7 +208,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Call the fetch_github_issues function
         # fetch_github_issues()
         
-        contributors_dict = process_contributions(github_api, org, repo)
+        contributors_dict = process_contributions(github_api, 'aws', 'aws-cdk')
         
         if not contributors_dict:
             print("Warning: No contributors found")
