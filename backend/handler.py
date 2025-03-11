@@ -46,7 +46,7 @@ def calculate_score(contributor: Contributor) -> int:
     """
     Calculate the score for a contributor
     """
-    return contributor['prsMerged'] * 10 + contributor['prsReviewed'] * 8
+    return contributor['prsMerged'] * 10 + contributor['prsReviewed'] * 8 + contributor['issuesOpened'] * 5 + contributor['discussionsAnswered'] * 3
 
 def is_author_to_exclude(username: str) -> bool:
     """
@@ -80,7 +80,28 @@ def fetch_all_contributors(github_api: GitHubAPI, org: str, repo: str) -> Set[st
     
     return contributors
 
-def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, username: str) -> Contributor:
+def get_discussion_points(github_api, username):
+    """
+    Get points for answered discussions for a given username
+    Returns number of points based on answered discussions
+    """
+    try:
+        # Import here to avoid circular dependencies
+        from discussion_analyzer import get_answered_discussions
+        
+        # Get discussion data for all users
+        discussion_data = get_answered_discussions(org, repo, github_api.token)
+        
+        # Get count of discussions answered by this user
+        discussions_answered = discussion_data.get(username, 0)
+        
+        return discussions_answered
+        
+    except Exception as e:
+        logger.error(f"Error getting discussion points for {username}: {str(e)}")
+        return 0
+
+def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, username: str, github_token = None) -> Contributor:
     """
     Fetch contributions data for a specific user
     """
@@ -112,10 +133,30 @@ def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, usernam
         has_next_page = page_info.get('hasNextPage', False)
         cursor = page_info.get('endCursor')
 
+    # Get opened issues count
+    issues_opened = 0
+    has_next_page = True
+    cursor = None 
+
+    while has_next_page:
+        response = github_api.get_issues_opened(org, repo, username, cursor)
+        search_data = response.get('data', {}).get('search', {})
+        issues_opened += len(search_data.get('nodes', []))
+
+        page_info = search_data.get('pageInfo', {})
+        has_next_page = page_info.get('hasNextPage', False)
+        cursor = page_info.get('endCursor')
+
+
+    # Get discussions data
+    discussions_answered = get_discussion_points(github_api, username)
+
     contributor: Contributor = {
         'username': username,
         'prsMerged': merged_count,
         'prsReviewed': review_count,
+        'issuesOpened': issues_opened,
+        'discussionsAnswered': discussions_answered,
         'totalScore': 0
     }
     
@@ -138,16 +179,41 @@ def process_contributions(github_api: GitHubAPI, org: str, repo: str) -> Dict[st
             continue
             
         print(f"Processing contributor {i}/{len(potential_contributors)}: {username}")
-        contributor = fetch_contributions_data(github_api, org, repo, username)
+        contributor = fetch_contributions_data(github_api, org, repo, username, )
         
-        if contributor['prsMerged'] > 0 or contributor['prsReviewed'] > 0:
+        if contributor['prsMerged'] > 0 or contributor['prsReviewed'] > 0 or contributor['issuesOpened'] > 0 or contributor['discussionsAnswered'] > 0:
             active_contributors[username] = contributor
-            print(f"Added {username} with {contributor['prsMerged']} PRs merged and {contributor['prsReviewed']} PRs reviewed")
+            print(f"Added {username} with {contributor['prsMerged']} PRs merged, {contributor['prsReviewed']} PRs reviewed, issues opened {contributor['issuesOpened']}, Discussions Answered {contributor['discussionsAnswered']} ")
     
     print(f"\nSummary:")
     print(f"Total potential contributors: {len(potential_contributors)}")
     print(f"Active contributors: {len(active_contributors)}")
     return active_contributors
+
+def upload_to_s3(data: dict, bucket: str, key: str) -> bool:
+    """
+    Upload JSON data to S3 bucket
+    
+    Args:
+        data: Dictionary containing the leaderboard data
+        bucket: S3 bucket name
+        key: S3 object key (path/filename)
+        
+    Returns:
+        bool: True if upload was successful, False otherwise
+    """
+    try:
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=json.dumps(data, default=str),
+            ContentType='application/json'
+        )
+        print(f"Successfully uploaded leaderboard data to s3://{bucket}/{key}")
+        return True
+    except ClientError as e:
+        print(f"Error uploading to S3: {str(e)}")
+        return False    
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -156,6 +222,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     print(f"Received event: {json.dumps(event)}")
     
     try:
+        s3_bucket = event.get('s3_bucket', 'cdk-github-leaderboard-data')
         org = event.get('org', 'aws')
         repo = event.get('repo', 'aws-cdk')
         
@@ -163,18 +230,15 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
         github_api = GitHubAPI(github_token)
         print(f"Generating leaderboard for {org}/{repo}")
-
-        # Call the fetch_github_issues function
-        # fetch_github_issues()
         
-        contributors_dict = process_contributions(github_api, org, repo)
+        contributors_dict = process_contributions(github_api, 'aws', 'aws-cdk')
         
         if not contributors_dict:
             print("Warning: No contributors found")
         
         contributors_list = list(contributors_dict.values())
         contributors_list.sort(key=lambda c: c['totalScore'], reverse=True)
-        top_contributors = contributors_list[:25]
+        top_contributors = contributors_list[:100]
 
         leaderboard_data = {
             'lastUpdated': datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -185,6 +249,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         print("\nLeaderboard Data:")
         print(json.dumps(leaderboard_data, indent=2))
         
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+        s3_key = f"leaderboard/leaderboard-{timestamp}.json"
+        
+        upload_success = upload_to_s3(leaderboard_data, s3_bucket, s3_key)
+        if not upload_success:
+            print("Warning: Failed to upload leaderboard data to S3")
+
         return {
             'statusCode': 200,
             'headers': {

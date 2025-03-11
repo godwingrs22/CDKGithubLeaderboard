@@ -28,6 +28,7 @@
     "constructs": "^10.0.0",
     "date-fns": "^4.1.0",
     "dotenv": "^16.0.0",
+    "react-scripts": "^5.0.1",
     "source-map-support": "^0.5.21",
     "ts-node": "^10.9.0",
     "typescript": "^4.9.0"

@@ -8,11 +8,18 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { join } from 'path';
+import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
+
+// Define a new interface that extends StackProps to include our custom properties
+export interface CdkGithubLeaderboardStackProps extends cdk.StackProps {
+  bucketNameSuffix?: string;
+}
 
 export class CdkGithubLeaderboardStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: CdkGithubLeaderboardStackProps) {
     super(scope, id, props);
 
     const githubTokenSecret = new secretsmanager.Secret(this, 'GitHubTokenSecret', {
@@ -20,19 +27,16 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
       secretName: 'github-token',
     });
 
+    // Generate bucket name using the provided suffix or default to a generic name
+    const bucketNameSuffix = props?.bucketNameSuffix || 'default';
+    const bucketName = `cdk-leaderboard-${bucketNameSuffix}`;
+
     const websiteBucket = new s3.Bucket(this, 'CdkGithubLeaderboardWebsiteBucket', {
-      bucketName: 'cdk-leaderboard',
+      bucketName: bucketName,
       websiteIndexDocument: 'index.html',
       websiteErrorDocument: 'index.html',
-      publicReadAccess: true,
-      blockPublicAccess: new s3.BlockPublicAccess({
-        blockPublicAcls: false,
-        blockPublicPolicy: false,
-        ignorePublicAcls: false,
-        restrictPublicBuckets: false
-      }),
       removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      autoDeleteObjects: true
     });
 
     websiteBucket.addCorsRule({
@@ -40,6 +44,13 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
       allowedOrigins: ['*'],
       allowedHeaders: ['*'],
       maxAge: 3000,
+    });
+
+    const cloudFrontOAC = new cloudfront.Distribution(this, 'CdkGithubLeaderboardCloudFrontOAC', {
+      defaultBehavior: {
+        origin: S3BucketOrigin.withOriginAccessControl(websiteBucket),
+      },
+      defaultRootObject: 'index.html',
     });
 
     const cdkGithubLeaderboardFunction = new lambda.Function(this, 'CdkGithubLeaderboardFunction', {
@@ -71,6 +82,11 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
  
      rule.addTarget(new targets.LambdaFunction(cdkGithubLeaderboardFunction));
 
+    new cdk.CfnOutput(this, 'CloudfrontDistributionName', {
+      value: cloudFrontOAC.distributionDomainName,
+      description: 'URL for leaderboard website',
+    })
+     
     new cdk.CfnOutput(this, 'CdkGithubLeaderboardFunctionArn', {
       value: cdkGithubLeaderboardFunction.functionArn,
       description: 'ARN of the Python Lambda function',
