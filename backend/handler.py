@@ -12,6 +12,8 @@ class Contributor(TypedDict):
     username: str
     prsMerged: int
     prsReviewed: int
+    issuesCreated: int  # Added field
+    issuesCommented: int  # Added field 
     totalScore: int
 
 def github_graphql(query: str, variables: Dict[str, Any]) -> Dict[str, Any]:
@@ -62,7 +64,12 @@ def calculate_score(contributor: Contributor) -> int:
     Returns:
         Total score
     """
-    return contributor['prsMerged'] * 10 + contributor['prsReviewed'] * 8
+    return (
+        contributor['prsMerged'] * 10 + 
+        contributor['prsReviewed'] * 8 +
+        contributor['issuesCreated'] * 5 +
+        contributor['issuesCommented'] * 3
+    )
 
 def fetch_all_contributors(org: str, repo: str) -> Set[str]:
     """
@@ -207,11 +214,18 @@ def fetch_contributions_data(org: str, repo: str, username: str) -> Contributor:
         page_info = search_data.get('pageInfo', {})
         has_next_page = page_info.get('hasNextPage', False)
         review_cursor = page_info.get('endCursor')
+    
+    # Get issue metrics from issue_analyzer
+    issues_data = fetch_github_issues()
+    issues_created = sum(1 for issue in issues_data if issue.get('author') == username)
+    issues_commented = sum(1 for issue in issues_data if username in issue.get('commenters', []))
 
     contributor: Contributor = {
         'username': username,
         'prsMerged': merged_count,
         'prsReviewed': review_count,
+        'issuesCreated': issues_created,
+        'issuesCommented': issues_commented,
         'totalScore': 0
     }
     
@@ -230,7 +244,9 @@ def is_active_contributor(contributor: Contributor) -> bool:
     """
     return (
         contributor['prsMerged'] > 0 or 
-        contributor['prsReviewed'] > 0
+        contributor['prsReviewed'] > 0 or 
+        contributor['issuesCreated'] > 0 or
+        contributor['issuesCommented'] > 0
     )
 
 def process_contributions(org: str, repo: str) -> Dict[str, Contributor]:
