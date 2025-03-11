@@ -3,9 +3,44 @@ import os
 import datetime
 from models import Contributor
 from typing import Dict, List, Optional, TypedDict, Any, Set
+import boto3
+from botocore.exceptions import ClientError
 from github_api import GitHubAPI
 # from issue_analyzer import fetch_github_issues
 from constants import AUTHORS_TO_EXCLUDE
+
+def get_github_token() -> str:
+    """
+    Retrieve GitHub token from AWS Secrets Manager using the secret ARN
+    
+    Returns:
+        The GitHub token string
+    """
+    secret_arn = os.environ.get('GITHUB_TOKEN_SECRET_ARN')
+    if not secret_arn:
+        raise ValueError("GITHUB_TOKEN_SECRET_ARN environment variable is not set")
+
+    region_name = os.environ.get('AWS_REGION')
+    if not region_name:
+        raise ValueError("AWS_REGION environment variable is not set")
+
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name,
+         # Disable SSL verification for local testing
+         #TODO: Remove later after testing
+        verify=False
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_arn
+        )
+        return get_secret_value_response['SecretString']
+    except ClientError as e:
+        print(f"Error retrieving secret: {str(e)}")
+        raise e
 
 def calculate_score(contributor: Contributor) -> int:
     """
@@ -124,9 +159,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         org = event.get('org', 'aws')
         repo = event.get('repo', 'aws-cdk')
         
-        github_token = os.environ.get('GITHUB_TOKEN')
-        if not github_token:
-            raise ValueError("GITHUB_TOKEN environment variable is not set")
+        github_token = get_github_token()
             
         github_api = GitHubAPI(github_token)
         print(f"Generating leaderboard for {org}/{repo}")
@@ -178,6 +211,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 # For local testing
 if __name__ == "__main__":
+    # Set environment variables for local testing
+    os.environ['AWS_REGION'] = 'us-east-1'  # Replace with your region
+    # Find the secret ARN in AWS Secrets Manager console
+    os.environ['GITHUB_TOKEN_SECRET_ARN'] = ''
+
     event = {
         'org': 'aws',
         'repo': 'aws-cdk'
@@ -185,5 +223,5 @@ if __name__ == "__main__":
 
     result = handler(event, None)
     
-    # Print the status code
+    # Print the body
     print(f"\nbody: {result['body']}")
