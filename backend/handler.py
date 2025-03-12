@@ -244,18 +244,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Upload file with timestamp
         s3_key = f"leaderboard/leaderboard-{timestamp}.json"
         
-        # Signal success to CodePipeline
-        codepipeline_client.put_job_success_result(jobId=job_id)
-        
-        # Signal success to CodePipeline
-        codepipeline_client.put_job_success_result(jobId=job_id)
-        
         upload_success = upload_to_s3(leaderboard_data, s3_bucket, s3_key)
         if not upload_success:
             print("Warning: Failed to upload leaderboard data to S3")
 
         # Upload to data folder 
         upload_to_s3(leaderboard_data, s3_bucket, 'data/leaderboard.json')
+
+                # Signal success to CodePipeline
+        codepipeline_client.put_job_success_result(jobId=job_id)
+        
+        # Signal success to CodePipeline
+        codepipeline_client.put_job_success_result(jobId=job_id)
 
         return {
             'statusCode': 200,
