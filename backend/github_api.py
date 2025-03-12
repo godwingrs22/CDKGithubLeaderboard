@@ -163,6 +163,3 @@ class GitHubAPI:
             'queryString': query,
             'cursor': cursor
         })
-
-
-     

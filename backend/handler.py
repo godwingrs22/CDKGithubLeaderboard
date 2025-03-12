@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, TypedDict, Any, Set
 import boto3
 from botocore.exceptions import ClientError
 from github_api import GitHubAPI
-# from issue_analyzer import fetch_github_issues
+from discussion_analyzer import DiscussionAnalyzer
 from constants import AUTHORS_TO_EXCLUDE
 
 def get_github_token() -> str:
@@ -80,28 +80,7 @@ def fetch_all_contributors(github_api: GitHubAPI, org: str, repo: str) -> Set[st
     
     return contributors
 
-# def get_discussion_points(github_api, username):
-#     """
-#     Get points for answered discussions for a given username
-#     Returns number of points based on answered discussions
-#     """
-#     try:
-#         # Import here to avoid circular dependencies
-#         from discussion_analyzer import get_answered_discussions
-        
-#         # Get discussion data for all users
-#         discussion_data = get_answered_discussions(org, repo, github_api.token)
-        
-#         # Get count of discussions answered by this user
-#         discussions_answered = discussion_data.get(username, 0)
-        
-#         return discussions_answered
-        
-#     except Exception as e:
-#         logger.error(f"Error getting discussion points for {username}: {str(e)}")
-#         return 0
-
-def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, username: str, github_token = None) -> Contributor:
+def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, username: str, discussion_analyzer: DiscussionAnalyzer) -> Contributor:
     """
     Fetch contributions data for a specific user
     """
@@ -149,8 +128,7 @@ def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, usernam
 
 
     # Get discussions data
-    # discussions_answered = get_discussion_points(github_api, username)
-    discussions_answered = 0
+    discussions_answered = discussion_analyzer.get_user_discussion_count(username)
 
     contributor: Contributor = {
         'username': username,
@@ -173,6 +151,9 @@ def process_contributions(github_api: GitHubAPI, org: str, repo: str) -> Dict[st
     print(f"Fetching contributors for {org}/{repo}")
     potential_contributors = fetch_all_contributors(github_api, org, repo)
     print(f"Found {len(potential_contributors)} total potential contributors")
+
+    discussion_analyzer = DiscussionAnalyzer(github_api)
+    discussion_analyzer.initialize_discussions(org, repo)
     
     for i, username in enumerate(potential_contributors, 1):
         if is_author_to_exclude(username):
@@ -180,7 +161,7 @@ def process_contributions(github_api: GitHubAPI, org: str, repo: str) -> Dict[st
             continue
             
         print(f"Processing contributor {i}/{len(potential_contributors)}: {username}")
-        contributor = fetch_contributions_data(github_api, org, repo, username, )
+        contributor = fetch_contributions_data(github_api, org, repo, username, discussion_analyzer)
         
         if contributor['prsMerged'] > 0 or contributor['prsReviewed'] > 0 or contributor['issuesOpened'] > 0 or contributor['discussionsAnswered'] > 0:
             active_contributors[username] = contributor
@@ -191,30 +172,31 @@ def process_contributions(github_api: GitHubAPI, org: str, repo: str) -> Dict[st
     print(f"Active contributors: {len(active_contributors)}")
     return active_contributors
 
-# def upload_to_s3(data: dict, bucket: str, key: str) -> bool:
-#     """
-#     Upload JSON data to S3 bucket
+def upload_to_s3(data: dict, bucket: str, key: str) -> bool:
+    """
+    Upload JSON data to S3 bucket
     
-#     Args:
-#         data: Dictionary containing the leaderboard data
-#         bucket: S3 bucket name
-#         key: S3 object key (path/filename)
+    Args:
+        data: Dictionary containing the leaderboard data
+        bucket: S3 bucket name
+        key: S3 object key (path/filename)
         
-#     Returns:
-#         bool: True if upload was successful, False otherwise
-#     """
-#     try:
-#         s3_client.put_object(
-#             Bucket=bucket,
-#             Key=key,
-#             Body=json.dumps(data, default=str),
-#             ContentType='application/json'
-#         )
-#         print(f"Successfully uploaded leaderboard data to s3://{bucket}/{key}")
-#         return True
-#     except ClientError as e:
-#         print(f"Error uploading to S3: {str(e)}")
-#         return False    
+    Returns:
+        bool: True if upload was successful, False otherwise
+    """
+    try:
+        s3_client = boto3.client('s3')
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=json.dumps(data, default=str),
+            ContentType='application/json'
+        )
+        print(f"Successfully uploaded leaderboard data to s3://{bucket}/{key}")
+        return True
+    except ClientError as e:
+        print(f"Error uploading to S3: {str(e)}")
+        return False    
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -227,7 +209,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     job_id = event['CodePipeline.job']['id']
     
     try:
-        s3_bucket = event.get('s3_bucket', 'cdk-github-leaderboard-data')
         org = event.get('org', 'aws')
         repo = event.get('repo', 'aws-cdk')
         
@@ -254,15 +235,27 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         print("\nLeaderboard Data:")
         print(json.dumps(leaderboard_data, indent=2))
         
+        # Upload data to s3
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+        s3_bucket = os.environ.get('BUCKET_NAME')
+        if not s3_bucket:
+            raise ValueError("BUCKET_NAME environment variable is not set")
+        
+        # Upload file with timestamp
         s3_key = f"leaderboard/leaderboard-{timestamp}.json"
         
         # Signal success to CodePipeline
         codepipeline_client.put_job_success_result(jobId=job_id)
         
-        # upload_success = upload_to_s3(leaderboard_data, s3_bucket, s3_key)
-        # if not upload_success:
-        #     print("Warning: Failed to upload leaderboard data to S3")
+        # Signal success to CodePipeline
+        codepipeline_client.put_job_success_result(jobId=job_id)
+        
+        upload_success = upload_to_s3(leaderboard_data, s3_bucket, s3_key)
+        if not upload_success:
+            print("Warning: Failed to upload leaderboard data to S3")
+
+        # Upload to data folder 
+        upload_to_s3(leaderboard_data, s3_bucket, 'data/leaderboard.json')
 
         return {
             'statusCode': 200,
@@ -302,11 +295,11 @@ if __name__ == "__main__":
     # Set environment variables for local testing
     os.environ['AWS_REGION'] = 'us-east-1'  # Replace with your region
     # Find the secret ARN in AWS Secrets Manager console
-    os.environ['GITHUB_TOKEN_SECRET_ARN'] = 'arn:aws:secretsmanager:us-east-1:818788848451:secret:github-token-FnPbMW'
+    os.environ['GITHUB_TOKEN_SECRET_ARN'] = 'arn:aws:secretsmanager:us-east-1:916743627080:secret:github-token-zbf68F'
 
     event = {
         'org': 'aws',
-        'repo': 'aws-cdk'
+        'repo': 'aws-cdk',
     }
 
     result = handler(event, None)

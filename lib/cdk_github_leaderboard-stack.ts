@@ -129,11 +129,13 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
       environment: {
         PYTHONPATH: '/var/runtime:/var/task',
         GITHUB_TOKEN_SECRET_ARN: githubTokenSecret.secretArn,
+        BUCKET_NAME: websiteBucket.bucketName,
       },
       description: 'Python Lambda function deployed with TypeScript CDK',
     });
 
      githubTokenSecret.grantRead(cdkGithubLeaderboardFunction);
+     websiteBucket.grantWrite(cdkGithubLeaderboardFunction);
 
     // Create an S3 bucket for the pipeline source (placeholder)
     const sourceBucket = new s3.Bucket(this, 'SourceBucket', {
