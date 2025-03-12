@@ -231,7 +231,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         github_api = GitHubAPI(github_token)
         print(f"Generating leaderboard for {org}/{repo}")
         
-        contributors_dict = process_contributions(github_api, 'aws', 'aws-cdk')
+        contributors_dict = process_contributions(github_api, org, repo)
         
         if not contributors_dict:
             print("Warning: No contributors found")
