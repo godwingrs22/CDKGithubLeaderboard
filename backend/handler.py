@@ -80,26 +80,26 @@ def fetch_all_contributors(github_api: GitHubAPI, org: str, repo: str) -> Set[st
     
     return contributors
 
-def get_discussion_points(github_api, username):
-    """
-    Get points for answered discussions for a given username
-    Returns number of points based on answered discussions
-    """
-    try:
-        # Import here to avoid circular dependencies
-        from discussion_analyzer import get_answered_discussions
+# def get_discussion_points(github_api, username):
+#     """
+#     Get points for answered discussions for a given username
+#     Returns number of points based on answered discussions
+#     """
+#     try:
+#         # Import here to avoid circular dependencies
+#         from discussion_analyzer import get_answered_discussions
         
-        # Get discussion data for all users
-        discussion_data = get_answered_discussions(org, repo, github_api.token)
+#         # Get discussion data for all users
+#         discussion_data = get_answered_discussions(org, repo, github_api.token)
         
-        # Get count of discussions answered by this user
-        discussions_answered = discussion_data.get(username, 0)
+#         # Get count of discussions answered by this user
+#         discussions_answered = discussion_data.get(username, 0)
         
-        return discussions_answered
+#         return discussions_answered
         
-    except Exception as e:
-        logger.error(f"Error getting discussion points for {username}: {str(e)}")
-        return 0
+#     except Exception as e:
+#         logger.error(f"Error getting discussion points for {username}: {str(e)}")
+#         return 0
 
 def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, username: str, github_token = None) -> Contributor:
     """
@@ -149,7 +149,8 @@ def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, usernam
 
 
     # Get discussions data
-    discussions_answered = get_discussion_points(github_api, username)
+    # discussions_answered = get_discussion_points(github_api, username)
+    discussions_answered = 0
 
     contributor: Contributor = {
         'username': username,
@@ -183,37 +184,37 @@ def process_contributions(github_api: GitHubAPI, org: str, repo: str) -> Dict[st
         
         if contributor['prsMerged'] > 0 or contributor['prsReviewed'] > 0 or contributor['issuesOpened'] > 0 or contributor['discussionsAnswered'] > 0:
             active_contributors[username] = contributor
-            print(f"Added {username} with {contributor['prsMerged']} PRs merged, {contributor['prsReviewed']} PRs reviewed, issues opened {contributor['issuesOpened']}, Discussions Answered {contributor['discussionsAnswered']} ")
+            print(f"Added {username} with {contributor['prsMerged']} PRs merged, {contributor['prsReviewed']} PRs reviewed, {contributor['issuesOpened']} issues opened ,{contributor['discussionsAnswered']} Discussions Answered")
     
     print(f"\nSummary:")
     print(f"Total potential contributors: {len(potential_contributors)}")
     print(f"Active contributors: {len(active_contributors)}")
     return active_contributors
 
-def upload_to_s3(data: dict, bucket: str, key: str) -> bool:
-    """
-    Upload JSON data to S3 bucket
+# def upload_to_s3(data: dict, bucket: str, key: str) -> bool:
+#     """
+#     Upload JSON data to S3 bucket
     
-    Args:
-        data: Dictionary containing the leaderboard data
-        bucket: S3 bucket name
-        key: S3 object key (path/filename)
+#     Args:
+#         data: Dictionary containing the leaderboard data
+#         bucket: S3 bucket name
+#         key: S3 object key (path/filename)
         
-    Returns:
-        bool: True if upload was successful, False otherwise
-    """
-    try:
-        s3_client.put_object(
-            Bucket=bucket,
-            Key=key,
-            Body=json.dumps(data, default=str),
-            ContentType='application/json'
-        )
-        print(f"Successfully uploaded leaderboard data to s3://{bucket}/{key}")
-        return True
-    except ClientError as e:
-        print(f"Error uploading to S3: {str(e)}")
-        return False    
+#     Returns:
+#         bool: True if upload was successful, False otherwise
+#     """
+#     try:
+#         s3_client.put_object(
+#             Bucket=bucket,
+#             Key=key,
+#             Body=json.dumps(data, default=str),
+#             ContentType='application/json'
+#         )
+#         print(f"Successfully uploaded leaderboard data to s3://{bucket}/{key}")
+#         return True
+#     except ClientError as e:
+#         print(f"Error uploading to S3: {str(e)}")
+#         return False    
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -252,9 +253,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
         s3_key = f"leaderboard/leaderboard-{timestamp}.json"
         
-        upload_success = upload_to_s3(leaderboard_data, s3_bucket, s3_key)
-        if not upload_success:
-            print("Warning: Failed to upload leaderboard data to S3")
+        # upload_success = upload_to_s3(leaderboard_data, s3_bucket, s3_key)
+        # if not upload_success:
+        #     print("Warning: Failed to upload leaderboard data to S3")
 
         return {
             'statusCode': 200,

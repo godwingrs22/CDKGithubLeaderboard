@@ -25,21 +25,21 @@ echo "🔨 Building React app..."
 npm run build
 
 # Check if build directory exists
-if [ ! -d "cdk-leaderboard/build" ]; then
+if [ ! -d "build" ]; then
     echo "❌ Build failed - build directory does not exist"
     exit 1
 fi
 
 # Deploy to S3
 echo "📤 Deploying website to S3..."
-aws s3 sync cdk-leaderboard/build/ s3://$BUCKET_NAME --delete
-
-# Navigate back to root
-cd ../../
+aws s3 sync build/ s3://$BUCKET_NAME --delete
 
 # Deploy leaderboard data
 echo "📤 Deploying leaderboard data..."
 aws s3 cp data/leaderboard.json s3://$BUCKET_NAME/data/
+
+# Navigate back to root
+cd ../../
 
 echo "✅ Deployment complete!"
 echo "🌎 Website URL: http://$CLOUDFRONT_DOMAIN"

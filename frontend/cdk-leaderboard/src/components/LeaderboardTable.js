@@ -63,7 +63,7 @@ function LeaderboardTable({ data }) {
                   </td>
                   <td>{contributor.prsMerged}</td>
                   <td>{contributor.prsReviewed}</td>
-                  <td>{contributor.issuesCreated}</td>
+                  <td>{contributor.issuesOpened}</td>
                   <td>{contributor.discussionsAnswered}</td>
                   <td className="total-score">{contributor.totalScore}</td>
                 </tr>

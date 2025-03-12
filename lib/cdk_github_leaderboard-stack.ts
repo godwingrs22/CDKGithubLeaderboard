@@ -13,13 +13,8 @@ import { RemovalPolicy } from 'aws-cdk-lib';
 import { join } from 'path';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 
-// Define a new interface that extends StackProps to include our custom properties
-export interface CdkGithubLeaderboardStackProps extends cdk.StackProps {
-  bucketNameSuffix?: string;
-}
-
 export class CdkGithubLeaderboardStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: CdkGithubLeaderboardStackProps) {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     const githubTokenSecret = new secretsmanager.Secret(this, 'GitHubTokenSecret', {
@@ -27,9 +22,7 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
       secretName: 'github-token',
     });
 
-    // Generate bucket name using the provided suffix or default to a generic name
-    const bucketNameSuffix = props?.bucketNameSuffix || 'default';
-    const bucketName = `cdk-leaderboard-${bucketNameSuffix}`;
+    const bucketName = `cdk-leaderboard-${this.account}-${this.region}`.toLowerCase();
 
     const websiteBucket = new s3.Bucket(this, 'CdkGithubLeaderboardWebsiteBucket', {
       bucketName: bucketName,

@@ -11,7 +11,7 @@ function App() {
     useEffect(() => {   
       
     // For local development
-    // fetch('/leaderboard.json')
+    // fetch('/test/leaderboard.json')
     fetch('/data/leaderboard.json')
       .then(response => response.json())
       .then(data => {
