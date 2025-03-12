@@ -34,12 +34,12 @@ fi
 echo "📤 Deploying website to S3..."
 aws s3 sync build/ s3://$BUCKET_NAME --delete
 
-# Navigate back to root
-cd ../../
-
 # Deploy leaderboard data
 echo "📤 Deploying leaderboard data..."
 aws s3 cp data/leaderboard.json s3://$BUCKET_NAME/data/
+
+# Navigate back to root
+cd ../../
 
 echo "✅ Deployment complete!"
 echo "🌎 Website URL: http://$CLOUDFRONT_DOMAIN"
