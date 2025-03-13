@@ -11,8 +11,8 @@ function App() {
     useEffect(() => {   
       
     // For local development
-    // fetch('/test/leaderboard.json')
-    fetch('/data/leaderboard.json')
+    fetch('/test/leaderboard.json')
+    // fetch('/data/leaderboard.json')
       .then(response => response.json())
       .then(data => {
         // Sort the data by total score in descending order
