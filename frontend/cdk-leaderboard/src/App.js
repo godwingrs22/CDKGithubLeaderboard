@@ -6,23 +6,39 @@ import LeaderboardTable from "./components/LeaderboardTable";
 import InfoBoards from './components/InfoBoards';
 import "./styles/App.css";
 
+function sortContributors(contributors) {
+  return [...contributors].sort((a, b) => {
+    if(a.totalScore === b.totalScore) {
+      if(a.prsMerged !== b.prsMerged) {
+        return b.prsMerged - a.prsMerged;
+      }
+      else if(a.prsReviewed !== b.prsReviewed) {
+        return b.prsReviewed - a.prsReviewed;
+      }
+      else if(a.issuesOpened !== b.issuesOpened){
+        return b.issuesOpened - a.issuesOpened;
+      }
+      else if(a.discussionsAnswered !== b.discussionsAnswered){
+        return b.discussionsAnswered - a.discussionsAnswered;
+      }
+    }
+    return b.totalScore - a.totalScore;
+  });
+}
+
 function App() {
   const [leaderboardData, setLeaderboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // For local development
-    // fetch("/test/leaderboard.json")
-      fetch('/data/leaderboard.json')
-      .then((response) => response.json())
-      .then((data) => {
-        // Sort the data by total score in descending order
-        const sortedData = [...data.contributors].sort(
-          (a, b) => b.totalScore - a.totalScore
-        );
+    // fetch('/test/leaderboard.json')
+    fetch('/data/leaderboard.json')
+      .then(response => response.json())
+      .then(data => {
         setLeaderboardData({
           ...data,
-          contributors: sortedData,
+          contributors: sortContributors(data.contributors),
         });
         setLoading(false);
       })
@@ -40,9 +56,7 @@ function App() {
     );
   }
 
-  const sortedData = [...(leaderboardData?.contributors || [])].sort(
-    (a, b) => b.totalScore - a.totalScore
-  );
+  const sortedData = sortContributors(leaderboardData?.contributors || []);
 
   return (
     <div className="App">

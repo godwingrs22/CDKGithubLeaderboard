@@ -133,6 +133,37 @@ class GitHubAPI:
             'cursor': cursor
         })
 
+    def get_issues_contributors(self, org: str, repo: str, cursor: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get all contributors to the repository
+        """
+        query = f"repo:{org}/{repo} is:issue created:>=2024-01-01"
+        graphql_query = """
+            query($queryString: String!, $cursor: String) {
+              search(query: $queryString, type: ISSUE, first: 100, after: $cursor) {
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+                nodes {
+                  ... on Issue {
+                    number
+                    title
+                    createdAt
+                    author {
+                      login
+                    }
+                    state
+                  }
+                }
+              }
+            }
+        """
+        return self.graphql_query(graphql_query, {
+            'queryString': query,
+            'cursor': cursor
+        })   
+
     def get_issues_opened(self, org: str, repo: str, username: str, cursor: Optional[str] = None) -> Dict[str, Any]:
         """
         Get all issues opened in the last year

@@ -58,7 +58,7 @@ def fetch_all_contributors(github_api: GitHubAPI, org: str, repo: str) -> Set[st
     """
     Fetch all contributors with pagination
     """
-    contributors = set()
+    pr_contributors = set()
     has_next_page = True
     cursor = None
     
@@ -68,16 +68,34 @@ def fetch_all_contributors(github_api: GitHubAPI, org: str, repo: str) -> Set[st
         
         for pr in search_data.get('nodes', []):
             if pr.get('author', {}).get('login'):
-                contributors.add(pr['author']['login'])
+                pr_contributors.add(pr['author']['login'])
             
             for review in pr.get('reviews', {}).get('nodes', []):
                 if review.get('author', {}).get('login'):
-                    contributors.add(review['author']['login'])
-        
+                    pr_contributors.add(review['author']['login'])
+
+        page_info = search_data.get('pageInfo', {})
+        has_next_page = page_info.get('hasNextPage', False)
+        cursor = page_info.get('endCursor')            
+
+    #Get the contributors for issues
+    issue_contributors = set()
+    has_next_page = True
+    cursor = None
+    while has_next_page:
+        response = github_api.get_issues_contributors(org, repo, cursor)
+        search_data = response.get('data', {}).get('search', {})
+
+        for issue in search_data.get('nodes', []):
+            author = issue.get('author')
+            if author and author.get('login'):
+                issue_contributors.add(issue['author']['login'])
+
         page_info = search_data.get('pageInfo', {})
         has_next_page = page_info.get('hasNextPage', False)
         cursor = page_info.get('endCursor')
     
+    contributors = pr_contributors.union(issue_contributors)
     return contributors
 
 def fetch_contributions_data(github_api: GitHubAPI, org: str, repo: str, username: str, discussion_analyzer: DiscussionAnalyzer) -> Contributor:
@@ -238,6 +256,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Upload data to s3
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
         s3_bucket = os.environ.get('BUCKET_NAME')
+
         if not s3_bucket:
             raise ValueError("BUCKET_NAME environment variable is not set")
         
@@ -251,7 +270,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Upload to data folder 
         upload_to_s3(leaderboard_data, s3_bucket, 'data/leaderboard.json')
 
-                # Signal success to CodePipeline
+        # Signal success to CodePipeline
         codepipeline_client.put_job_success_result(jobId=job_id)
         
         # Signal success to CodePipeline
@@ -296,6 +315,8 @@ if __name__ == "__main__":
     os.environ['AWS_REGION'] = 'us-east-1'  # Replace with your region
     # Find the secret ARN in AWS Secrets Manager console
     os.environ['GITHUB_TOKEN_SECRET_ARN'] = 'arn:aws:secretsmanager:us-east-1:916743627080:secret:github-token-zbf68F'
+
+    os.environ['BUCKET_NAME'] = 'sample-bucket'
 
     event = {
         'org': 'aws',
