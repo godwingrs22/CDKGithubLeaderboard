@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
+import Footer from './components/Footer'; 
 import TopThree from "./components/TopThree";
 import LeaderboardTable from "./components/LeaderboardTable";
 import InfoBoards from './components/InfoBoards';
@@ -54,13 +55,7 @@ function App() {
       <TopThree winners={sortedData.slice(0, 3)} />
       <InfoBoards />
       <LeaderboardTable data={sortedData} />
-      <div className="footer-info">
-        <div className="last-updated">
-          Last Updated:{" "}
-          {new Date(leaderboardData?.lastUpdated).toLocaleString()}
-        </div>
-        <div className="data-note">* Based on data since January 1, 2024</div>
-      </div>
+      <Footer lastUpdated={leaderboardData?.lastUpdated} />
     </div>
   );
 }
