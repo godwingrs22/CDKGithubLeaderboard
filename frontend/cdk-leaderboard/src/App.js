@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import TopThree from "./components/TopThree";
 import LeaderboardTable from "./components/LeaderboardTable";
+import InfoBoards from './components/InfoBoards';
 import "./styles/App.css";
 
 function App() {
@@ -10,8 +11,8 @@ function App() {
 
   useEffect(() => {
     // For local development
-    fetch("/test/leaderboard.json")
-      // fetch('/data/leaderboard.json')
+    // fetch("/test/leaderboard.json")
+      fetch('/data/leaderboard.json')
       .then((response) => response.json())
       .then((data) => {
         // Sort the data by total score in descending order
@@ -51,6 +52,7 @@ function App() {
         <img src={require('./assets/champion_icon.png')} alt="champion" className="champion-icon" />
       </h1>
       <TopThree winners={sortedData.slice(0, 3)} />
+      <InfoBoards />
       <LeaderboardTable data={sortedData} />
       <div className="footer-info">
         <div className="last-updated">
