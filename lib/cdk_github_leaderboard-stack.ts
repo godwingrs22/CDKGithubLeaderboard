@@ -14,6 +14,7 @@ import { RemovalPolicy } from 'aws-cdk-lib';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as s3_deployment from 'aws-cdk-lib/aws-s3-deployment';
+import * as waf from 'aws-cdk-lib/aws-wafv2';
 
 export class CdkGithubLeaderboardStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -41,11 +42,74 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
       maxAge: 3000,
     });
 
+    const webAcl = new waf.CfnWebACL(this, 'WebACL', {
+      defaultAction: { allow: {} },
+      scope: 'CLOUDFRONT',
+      visibilityConfig: {
+        cloudWatchMetricsEnabled: true,
+        metricName: 'WebACLMetrics',
+        sampledRequestsEnabled: true,
+      },
+      rules: [
+        // AWS Managed Rules - Common Rule Set
+        {
+          name: 'AWSManagedRulesCommonRuleSet',
+          priority: 1,
+          overrideAction: { none: {} },
+          statement: {
+            managedRuleGroupStatement: {
+              vendorName: 'AWS',
+              name: 'AWSManagedRulesCommonRuleSet',
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: 'AWSManagedRulesCommonRuleSetMetric',
+            sampledRequestsEnabled: true,
+          },
+        },
+        {
+          name: 'AWSManagedRulesKnownBadInputsRuleSet',
+          priority: 2,
+          overrideAction: { none: {} },
+          statement: {
+            managedRuleGroupStatement: {
+              vendorName: 'AWS',
+              name: 'AWSManagedRulesKnownBadInputsRuleSet',
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: 'AWSManagedRulesKnownBadInputsRuleSetMetric',
+            sampledRequestsEnabled: true,
+          },
+        },
+        // Rate Limiting Rule
+        {
+          name: 'RateLimitRule',
+          priority: 3,
+          action: { block: {} },
+          statement: {
+            rateBasedStatement: {
+              limit: 2000, // Requests per 5 minutes per IP
+              aggregateKeyType: 'IP',
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: 'RateLimitRuleMetric',
+            sampledRequestsEnabled: true,
+          },
+        },
+      ],
+    });
+
     const cloudFrontOAC = new cloudfront.Distribution(this, 'CdkGithubLeaderboardCloudFrontOAC', {
       defaultBehavior: {
         origin: S3BucketOrigin.withOriginAccessControl(websiteBucket),
       },
       defaultRootObject: 'index.html',
+      webAclId: webAcl.attrArn,
     });
 
     const cdkGithubLeaderboardFunction = new lambda.Function(this, 'CdkGithubLeaderboardFunction', {
