@@ -4,6 +4,7 @@ import rank2Badge from '../assets/badges/rank2_badge.png';
 import rank3Badge from '../assets/badges/rank3_badge.png';
 import top20Badge from '../assets/badges/top20_badge.png';
 import top50Badge from '../assets/badges/top50_badge.png';
+import top100Badge from '../assets/badges/top100_badge.png';
 
 function RankBadge({ rank }) {
   const getBadgeImage = (rank) => {
@@ -12,6 +13,7 @@ function RankBadge({ rank }) {
     if (rank === 3) return rank3Badge;
     if (rank >= 4 && rank <= 20) return top20Badge;
     if (rank >= 21 && rank <= 50) return top50Badge;
+    if (rank >= 51 && rank <= 100) return top100Badge;
     return null;
   };
 
@@ -21,6 +23,7 @@ function RankBadge({ rank }) {
     if (rank === 3) return "Bronze Contributor";
     if (rank >= 4 && rank <= 20) return "Elite Contributor";
     if (rank >= 21 && rank <= 50) return "Star Contributor";
+    if (rank >= 51 && rank <= 100) return "Rising Contributor";
     return "";
   };
 
