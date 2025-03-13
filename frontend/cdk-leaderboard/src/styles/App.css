@@ -5,14 +5,83 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #1a1a2e;
   color: #ffffff;
+  min-height: 100vh;
+  background: 
+    /* Diagonal lines pattern */
+    linear-gradient(45deg, transparent 98%, rgba(255, 255, 255, 0.1) 99%),
+    linear-gradient(-45deg, transparent 98%, rgba(255, 255, 255, 0.1) 99%),
+    /* Dotted pattern */
+    radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 2px),
+    /* Main gradients */
+    linear-gradient(135deg, 
+      #1a0b2e 0%,
+      #321b5a 25%,
+      #4b2b87 50%,
+      #321b5a 75%,
+      #1a0b2e 100%);
+  background-size: 
+    50px 50px,
+    50px 50px,
+    20px 20px,
+    100% 100%;
+  background-position: 
+    0 0,
+    0 0,
+    0 0,
+    0 0;
+  position: relative;
+  overflow-x: hidden;
+  animation: backgroundMove 2s linear infinite;
+}
+
+/* Add this new animation */
+@keyframes backgroundMove {
+  0% {
+    background-position: 
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+  100% {
+    background-position: 
+      50px 50px,
+      50px 50px,
+      10px 10px,
+      0 0;
+  }
+}
+
+/* Add curved shape effect */
+body::before {
+  content: '';
+  position: absolute;
+  top: 30%;
+  left: -10%;
+  right: -10%;
+  height: 40%;
+  background: rgba(255, 255, 255, 0.03);
+  transform: rotate(-5deg);
+  border-radius: 50% 50% 0 0;
+  z-index: 0;
+}
+
+@keyframes gradientAnimation {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 100%;
+  }
 }
 
 .App {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  position: relative;
+  z-index: 1;
 }
 
 /* Header Styles */
@@ -71,10 +140,9 @@ body {
   width: 300px;
   margin-left: auto;
   flex-shrink: 1;
-  max-width: 50%; 
+  max-width: 50%;
   padding-right: 20px;
 }
-
 
 .search-input {
   width: 100%;
@@ -139,7 +207,6 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Add pseudo-element for the pointed shape */
 .winner::before {
   content: '';
   position: absolute;
@@ -147,7 +214,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   z-index: 1;
   clip-path: polygon(
     50% 0%,
@@ -159,7 +226,7 @@ body {
   );
 }
 
-/* Ensure all content is above the clipped shape */
+/* Winner styles continued */
 .winner > * {
   position: relative;
   z-index: 2;
@@ -168,7 +235,7 @@ body {
 .winner.first {
   padding-top: 30px;
   min-height: 280px;
-  background: transparent
+  background: transparent;
 }
 
 .winner.first::before {
@@ -253,6 +320,7 @@ body {
   transition: transform 0.2s ease;
 }
 
+/* Score and Username Styles */
 .score {
   font-size: 24px;
   font-weight: bold;
@@ -304,7 +372,7 @@ body {
   gap: 20px;
   min-width: 0;
   width: 100%;
-  max-width: 100%; 
+  max-width: 100%;
   overflow: hidden;
 }
 
@@ -317,11 +385,12 @@ body {
 .leaderboard-table {
   width: 100%;
   border-collapse: collapse;
-  background-color: #16213e;
+  background-color: rgba(22, 33, 62, 0.9);
+  backdrop-filter: blur(5px);
 }
 
 .leaderboard-table th {
-  background-color: #7a4988;
+  background-color: rgba(122, 73, 136, 0.9);
   color: white;
   padding: 12px;
   text-align: left;
@@ -329,15 +398,15 @@ body {
 
 .leaderboard-table td {
   padding: 12px;
-  border-bottom: 1px solid #2a2a4a;
+  border-bottom: 1px solid rgba(42, 42, 74, 0.8);
 }
 
 .leaderboard-table tbody tr:nth-child(even) {
-  background-color: #1f2b4e;
+  background-color: rgba(31, 43, 78, 0.9);
 }
 
 .leaderboard-table tbody tr:hover {
-  background-color: #2a3a5e;
+  background-color: rgba(42, 58, 94, 0.9);
 }
 
 /* Avatar Styles */
@@ -482,4 +551,14 @@ body {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Additional Animation for Gradient Background */
+@keyframes gradientAnimation {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 100%;
+  }
 }
