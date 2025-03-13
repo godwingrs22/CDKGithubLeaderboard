@@ -222,6 +222,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     print(f"Received event: {json.dumps(event)}")
     
+    # Initialize the CodePipeline client
+    codepipeline_client = boto3.client('codepipeline')
+    job_id = event['CodePipeline.job']['id']
+    
     try:
         s3_bucket = event.get('s3_bucket', 'cdk-github-leaderboard-data')
         org = event.get('org', 'aws')
@@ -253,6 +257,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
         s3_key = f"leaderboard/leaderboard-{timestamp}.json"
         
+        # Signal success to CodePipeline
+        codepipeline_client.put_job_success_result(jobId=job_id)
+        
         # upload_success = upload_to_s3(leaderboard_data, s3_bucket, s3_key)
         # if not upload_success:
         #     print("Warning: Failed to upload leaderboard data to S3")
@@ -264,11 +271,20 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             },
             'body': json.dumps(leaderboard_data, default=str)
         }
-        
+    
     except Exception as e:
         print(f"Error updating leaderboard: {str(e)}")
         import traceback
         traceback.print_exc()
+        
+        # Signal failure to CodePipeline
+        codepipeline_client.put_job_failure_result(
+            jobId=job_id,
+            failureDetails={
+                'type': 'JobFailed',
+                'message': str(e)
+            }
+        )
         
         return {
             'statusCode': 500,
@@ -280,7 +296,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'error': str(e)
             })
         }
-
+    
 # For local testing
 if __name__ == "__main__":
     # Set environment variables for local testing
