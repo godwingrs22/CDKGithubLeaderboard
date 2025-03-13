@@ -1,35 +1,32 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #ffffff;
   min-height: 100vh;
   background: 
-    /* Diagonal lines pattern */
-    linear-gradient(45deg, transparent 98%, rgba(255, 255, 255, 0.1) 99%),
+    /* Diagonal lines pattern */ linear-gradient(
+      45deg,
+      transparent 98%,
+      rgba(255, 255, 255, 0.1) 99%
+    ),
     linear-gradient(-45deg, transparent 98%, rgba(255, 255, 255, 0.1) 99%),
     /* Dotted pattern */
-    radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 2px),
+      radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 2px),
     /* Main gradients */
-    linear-gradient(135deg, 
-      #1a0b2e 0%,
-      #321b5a 25%,
-      #4b2b87 50%,
-      #321b5a 75%,
-      #1a0b2e 100%);
-  background-size: 
-    50px 50px,
-    50px 50px,
-    20px 20px,
-    100% 100%;
-  background-position: 
-    0 0,
-    0 0,
-    0 0,
-    0 0;
+      linear-gradient(
+        135deg,
+        #1a0b2e 0%,
+        #321b5a 25%,
+        #4b2b87 50%,
+        #321b5a 75%,
+        #1a0b2e 100%
+      );
+  background-size: 50px 50px, 50px 50px, 20px 20px, 100% 100%;
+  background-position: 0 0, 0 0, 0 0, 0 0;
   position: relative;
   overflow-x: hidden;
   animation: backgroundMove 2s linear infinite;
@@ -38,24 +35,16 @@ body {
 /* Add this new animation */
 @keyframes backgroundMove {
   0% {
-    background-position: 
-      0 0,
-      0 0,
-      0 0,
-      0 0;
+    background-position: 0 0, 0 0, 0 0, 0 0;
   }
   100% {
-    background-position: 
-      50px 50px,
-      50px 50px,
-      10px 10px,
-      0 0;
+    background-position: 50px 50px, 50px 50px, 10px 10px, 0 0;
   }
 }
 
 /* Add curved shape effect */
 body::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 30%;
   left: -10%;
@@ -116,6 +105,16 @@ body::before {
   font-size: 36px;
   margin: 20px 0 40px 0;
   color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px; /* Space between icon and text */
+}
+
+.champion-icon {
+  width: 40px; /* Adjust size as needed */
+  height: 40px; /* Adjust size as needed */
+  object-fit: contain;
 }
 
 /* Search Bar Styles */
@@ -189,17 +188,17 @@ body::before {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  margin-bottom: 40px;
   padding: 20px;
   gap: 20px;
   position: relative;
+  /* z-index: 2; */
 }
 
 .winner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: transparent; 
+  background: transparent;
   padding: 20px 30px 45px;
   min-width: 160px;
   position: relative;
@@ -208,7 +207,7 @@ body::before {
 }
 
 .winner::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -216,14 +215,7 @@ body::before {
   bottom: 0;
   background: rgba(255, 255, 255, 0.15);
   z-index: 1;
-  clip-path: polygon(
-    50% 0%,
-    100% 0,
-    100% 85%,
-    50% 100%,
-    0 85%,
-    0 0
-  );
+  clip-path: polygon(50% 0%, 100% 0, 100% 85%, 50% 100%, 0 85%, 0 0);
 }
 
 /* Winner styles continued */
@@ -262,7 +254,7 @@ body::before {
   align-items: center;
   justify-content: center;
   margin: 10px 0;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .first .circle {
@@ -295,13 +287,11 @@ body::before {
   color: #1a1a2e;
   z-index: 3;
   border: 2px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.3),
-    0 0 0 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 4px rgba(0, 0, 0, 0.2);
 }
 
 .winner.first .rank-number {
-  background: linear-gradient(145deg, #ffd700, #ffcd00);
+  background: linear-gradient(145deg, #ffa600, #ffa600);
   border: 2px solid rgba(255, 255, 255, 0.8);
 }
 
@@ -342,8 +332,8 @@ body::before {
 }
 
 .rank-badge {
-  width: 24px;
-  height: 24px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
   transition: transform 0.2s ease;
   cursor: help;
@@ -354,15 +344,43 @@ body::before {
 }
 
 .winner .rank-badge {
-  width: 48px;
-  height: 48px;
+  width: 70px;
+  height: 70px;
   margin-top: 15px;
   margin-bottom: 15px;
 }
 
 .winner.first .rank-badge {
-  width: 56px;
-  height: 56px;
+  width: 90px;
+  height: 90px;
+}
+
+/* Username container for top three winners */
+.winner .username {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 15px;
+  font-weight: bold;
+  color: #ffffff;
+  text-align: center;
+  z-index: 3; /* Add this */
+}
+
+/* GitHub link specific to winners */
+.winner .github-link {
+  margin-left: 0;
+  display: flex;
+  align-items: center;
+  z-index: 3; /* Add this */
+  position: relative; /* Add this */
+  cursor: pointer; /* Add this */
+}
+
+/* You can keep your existing github-link styles for the table */
+.user-cell .github-link {
+  margin-left: -3px; /* Keep this for the table view */
 }
 
 /* Table Styles */
@@ -401,6 +419,24 @@ body::before {
   border-bottom: 1px solid rgba(42, 42, 74, 0.8);
 }
 
+/* Center align specific columns */
+.leaderboard-table td:nth-child(4), /* PRS MERGED */
+.leaderboard-table td:nth-child(5), /* PRS REVIEWED */
+.leaderboard-table td:nth-child(6), /* ISSUES CREATED */
+.leaderboard-table td:nth-child(7), /* DISCUSSIONS ANSWERED */
+.leaderboard-table td:nth-child(8)  { /* TOTAL SCORE */
+  text-align: center;
+}
+
+/* Center align the headers for these columns as well */
+.leaderboard-table th:nth-child(4),
+.leaderboard-table th:nth-child(5),
+.leaderboard-table th:nth-child(6),
+.leaderboard-table th:nth-child(7),
+.leaderboard-table th:nth-child(8) {
+  text-align: center;
+}
+
 .leaderboard-table tbody tr:nth-child(even) {
   background-color: rgba(31, 43, 78, 0.9);
 }
@@ -417,8 +453,8 @@ body::before {
 }
 
 .avatar {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
 }
@@ -478,6 +514,25 @@ body::before {
   color: #a0a0a0;
 }
 
+.footer-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.data-note {
+  color: #a0a0a0;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.footer-info .last-updated {
+  margin-top: 0;
+}
+
 /* Loading Spinner */
 .loading {
   display: flex;
@@ -495,6 +550,100 @@ body::before {
   animation: spin 1s linear infinite;
 }
 
+/* Info Boards Styles */
+.info-boards {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  margin-top: -300px;
+  margin-bottom: 40px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+/* Add these new styles for individual info boards */
+.info-board:first-child {
+  margin-left: -130px; /* Keep the left board position */
+}
+
+.info-board:last-child {
+  margin-right: -130px; /* Move the right board outward */
+}
+
+.info-board {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  padding: 20px;
+  border-radius: 10px;
+  width: 280px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.info-board h3 {
+  color: #ffffff;
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.info-board ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.info-board li {
+  color: #ffffff;
+  font-size: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-board.scoring li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.info-board.scoring li::before {
+  content: none;
+}
+
+/* Add styles for scoring icons */
+.info-board.scoring li svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.info-board.scoring li span {
+  flex: 1;
+}
+
+.info-badge {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.info-board.badges ul li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.info-board.badges ul li span {
+  flex: 1;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .table-header {
@@ -505,6 +654,25 @@ body::before {
 
   .search-container {
     width: 250px;
+  }
+
+  .top-three {
+    width: 100%;
+  }
+
+  .info-boards {
+    position: static;
+    transform: none;
+    flex-direction: row;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 0;
+  }
+
+  .info-board.scoring,
+  .info-board.badges {
+    transform: none;
+    margin: 0;
   }
 }
 
@@ -531,6 +699,12 @@ body::before {
 
   .main-title {
     font-size: 28px;
+    gap: 10px;
+  }
+
+  .champion-icon {
+    width: 30px;
+    height: 30px;
   }
 
   .table-header {
@@ -546,11 +720,62 @@ body::before {
   .table-title {
     text-align: center;
   }
+
+  .info-boards {
+    flex-direction: column;
+    align-items: center;
+    margin-top: 20px;
+    gap: 15px;
+  }
+
+  .info-board {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .footer-info {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .footer-info .last-updated,
+  .footer-info .data-note {
+    text-align: center;
+  }
+}
+
+/* GitHub Link Styles */
+.github-link {
+  color: #a0a0a0;
+  transition: color 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  margin-left: -3px;
+  text-decoration: none;
+}
+
+.github-link:hover {
+  color: #ffffff;
+}
+
+.github-icon {
+  opacity: 0.7;
+  transition: opacity 0.3s ease, transform 0.2s ease;
+}
+
+.github-link:hover .github-icon {
+  opacity: 1;
+  transform: scale(1.1);
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Additional Animation for Gradient Background */

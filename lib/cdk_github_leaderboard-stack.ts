@@ -243,7 +243,7 @@ export class CdkGithubLeaderboardStack extends cdk.Stack {
 
     // Create an EventBridge rule to trigger the pipeline
     const rule = new events.Rule(this, 'GithubPipelineTriggerRule', {
-      schedule: events.Schedule.rate(cdk.Duration.hours(1)), // Run every hour
+      schedule: events.Schedule.rate(cdk.Duration.days(1)), // Run every day
     });
 
     rule.addTarget(
