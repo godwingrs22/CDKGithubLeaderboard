@@ -116,6 +116,16 @@ body::before {
   font-size: 36px;
   margin: 20px 0 40px 0;
   color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px; /* Space between icon and text */
+}
+
+.champion-icon {
+  width: 40px; /* Adjust size as needed */
+  height: 40px; /* Adjust size as needed */
+  object-fit: contain;
 }
 
 /* Search Bar Styles */
@@ -301,7 +311,7 @@ body::before {
 }
 
 .winner.first .rank-number {
-  background: linear-gradient(145deg, #ffd700, #ffcd00);
+  background: linear-gradient(145deg, #ffa600, #ffa600);
   border: 2px solid rgba(255, 255, 255, 0.8);
 }
 
@@ -342,8 +352,8 @@ body::before {
 }
 
 .rank-badge {
-  width: 24px;
-  height: 24px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
   transition: transform 0.2s ease;
   cursor: help;
@@ -354,15 +364,39 @@ body::before {
 }
 
 .winner .rank-badge {
-  width: 48px;
-  height: 48px;
+  width: 70px;
+  height: 70px;
   margin-top: 15px;
   margin-bottom: 15px;
 }
 
 .winner.first .rank-badge {
-  width: 56px;
-  height: 56px;
+  width: 90px;
+  height: 90px;
+}
+
+/* Username container for top three winners */
+.winner .username {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px; /* Adds consistent spacing between username and icon */
+  margin-top: 15px;
+  font-weight: bold;
+  color: #ffffff;
+  text-align: center;
+}
+
+/* GitHub link specific to winners */
+.winner .github-link {
+  margin-left: 0; /* Override the -3px margin for winners section */
+  display: flex;
+  align-items: center;
+}
+
+/* You can keep your existing github-link styles for the table */
+.user-cell .github-link {
+  margin-left: -3px; /* Keep this for the table view */
 }
 
 /* Table Styles */
@@ -478,6 +512,25 @@ body::before {
   color: #a0a0a0;
 }
 
+.footer-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.data-note {
+  color: #a0a0a0;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.footer-info .last-updated {
+  margin-top: 0;
+}
+
 /* Loading Spinner */
 .loading {
   display: flex;
@@ -531,8 +584,14 @@ body::before {
 
   .main-title {
     font-size: 28px;
+    gap: 10px;
   }
 
+  .champion-icon {
+    width: 30px;
+    height: 30px;
+  }
+  
   .table-header {
     flex-direction: column;
     align-items: stretch;
@@ -546,7 +605,42 @@ body::before {
   .table-title {
     text-align: center;
   }
+  .footer-info {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+  
+  .footer-info .last-updated,
+  .footer-info .data-note {
+    text-align: center;
+  }
 }
+
+/* GitHub Link Styles */
+.github-link {
+  color: #a0a0a0;
+  transition: color 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  margin-left: -3px;
+  text-decoration: none;
+}
+
+.github-link:hover {
+  color: #ffffff;
+}
+
+.github-icon {
+  opacity: 0.7;
+  transition: opacity 0.3s ease, transform 0.2s ease;
+}
+
+.github-link:hover .github-icon {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
 
 @keyframes spin {
   0% { transform: rotate(0deg); }
