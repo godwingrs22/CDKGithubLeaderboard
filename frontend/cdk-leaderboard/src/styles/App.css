@@ -199,11 +199,12 @@ body::before {
   flex-direction: column;
   align-items: center;
   background: transparent;
-  padding: 20px 30px 45px;
+  padding: 10px 20px 50px;
   min-width: 160px;
   position: relative;
   backdrop-filter: blur(5px);
   border-top: 1px solid rgba(255, 255, 255, 0.2);
+  animation: float 4s ease-in-out infinite;
 }
 
 .winner::before {
@@ -216,6 +217,7 @@ body::before {
   background: rgba(255, 255, 255, 0.15);
   z-index: 1;
   clip-path: polygon(50% 0%, 100% 0, 100% 85%, 50% 100%, 0 85%, 0 0);
+  transition: all 0.3s ease;
 }
 
 /* Winner styles continued */
@@ -245,6 +247,7 @@ body::before {
 }
 
 .circle {
+  order: -1;
   overflow: hidden;
   width: 80px;
   height: 80px;
@@ -273,11 +276,11 @@ body::before {
 
 .rank-number {
   position: absolute;
-  bottom: -15px;
+  bottom: -20px;;
   left: 50%;
   transform: translateX(-50%);
-  width: 30px;
-  height: 30px;
+  width: 50px;
+  height: 50px;
   background: #ffd700;
   border-radius: 50%;
   display: flex;
@@ -346,8 +349,9 @@ body::before {
 .winner .rank-badge {
   width: 70px;
   height: 70px;
-  margin-top: 15px;
+  margin-top: 0;
   margin-bottom: 15px;
+  order: -2;
 }
 
 .winner.first .rank-badge {
@@ -376,6 +380,106 @@ body::before {
   z-index: 3; /* Add this */
   position: relative; /* Add this */
   cursor: pointer; /* Add this */
+}
+
+/* Add keyframes for floating animation */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+/* Update winner styles with animations */
+.winner {
+  animation: float 4s ease-in-out infinite;
+}
+
+.winner.second {
+  animation: float 4.5s ease-in-out infinite;
+  animation-delay: 0.2s;
+}
+
+.winner.third {
+  animation: float 5s ease-in-out infinite;
+  animation-delay: 0.4s;
+}
+
+/* Add hover effect */
+.winner:hover {
+  transform: scale(1.02);
+  transition: transform 0.3s ease;
+}
+
+.winner.first::before {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 136, 0, 0.4),
+    rgba(255, 136, 0, 0.3)
+  );
+  box-shadow: 
+    0 0 20px rgba(255, 136, 0, 0.2),
+    inset 0 0 30px rgba(255, 136, 0, 0.3);
+}
+
+.winner.second::before {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 136, 0, 0.4),
+    rgba(255, 136, 0, 0.3)
+  );
+  box-shadow: 
+    0 0 20px rgba(255, 136, 0, 0.2),
+    inset 0 0 30px rgba(255, 136, 0, 0.3);
+}
+
+.winner.third::before {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 136, 0, 0.4),
+    rgba(255, 136, 0, 0.3)
+  );
+  box-shadow: 
+    0 0 20px rgba(255, 136, 0, 0.2),
+    inset 0 0 30px rgba(255, 136, 0, 0.3);
+}
+
+.winner.first:hover::before {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 136, 0, 0.25),
+    rgba(255, 136, 0, 0.15)
+  );
+  box-shadow: 
+    0 0 30px rgba(255, 136, 0, 0.3),
+    inset 0 0 40px rgba(255, 136, 0, 0.4);
+}
+
+.winner.second:hover::before {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 136, 0, 0.25),
+    rgba(255, 136, 0, 0.15)
+  );
+  box-shadow: 
+    0 0 30px rgba(255, 136, 0, 0.3),
+    inset 0 0 40px rgba(255, 136, 0, 0.4);
+}
+
+.winner.third:hover::before {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 136, 0, 0.25),
+    rgba(255, 136, 0, 0.15)
+  );
+  box-shadow: 
+    0 0 30px rgba(255, 136, 0, 0.3),
+    inset 0 0 40px rgba(255, 136, 0, 0.4);
 }
 
 /* You can keep your existing github-link styles for the table */
