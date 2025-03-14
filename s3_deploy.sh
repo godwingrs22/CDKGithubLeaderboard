@@ -43,8 +43,8 @@ echo "📤 Deploying website to S3..."
 aws s3 sync build/ s3://$BUCKET_NAME --delete
 
 # Deploy leaderboard data
-echo "📤 Deploying leaderboard data..."
-aws s3 cp data/leaderboard.json s3://$BUCKET_NAME/data/
+# echo "📤 Deploying leaderboard data..."
+# aws s3 cp data/leaderboard.json s3://$BUCKET_NAME/data/
 
 # Create CloudFront invalidation
 echo "🔄 Creating CloudFront invalidation..."
